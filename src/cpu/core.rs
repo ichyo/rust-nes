@@ -1,9 +1,9 @@
 use memory::Memory;
 use super::register::Register;
-use super::instructions::{get_instruction, AddressingMode, Opcode, Instruction};
+use super::instructions::{lookup_instruction, AddressingMode, Opcode, Instruction};
 
 #[derive(Debug, Copy, Clone)]
-enum Addr {
+enum Operand {
     None,
     Immediate(u8),
     Accumulator,
@@ -17,88 +17,135 @@ pub struct Cpu<M: Memory> {
 
 impl<M: Memory> Cpu<M> {
     pub fn step(&mut self) {
-        let code: u8 = self.mem.read(self.reg.PC);
-        let inst: Instruction = get_instruction(code);
-        let addr = self.get_addr(inst.mode);
-        self.exec(inst.op, addr);
-    }
-
-    fn read(&self, addr: Addr) -> u8 {
-        match addr {
-            Addr::None => unreachable!(),
-            Addr::Immediate(val) => val,
-            Addr::Accumulator => self.reg.A,
-            Addr::Memory(addr) => self.mem.read(addr),
-        }
-    }
-
-    fn read_dw(&self, addr: Addr) -> u16 {
-        match addr {
-            Addr::None => unreachable!(),
-            Addr::Immediate(_) => unreachable!(),
-            Addr::Accumulator => unreachable!(),
-            Addr::Memory(addr) => (self.mem.read(addr) as u16) | ((self.mem.read(addr+1) as u16) << 8),
-        }
-    }
-
-    fn write(&mut self, addr: Addr, val: u8) {
-        match addr {
-            Addr::None => unreachable!(),
-            Addr::Immediate(_) => unreachable!(),
-            Addr::Accumulator => self.reg.A = val,
-            Addr::Memory(addr) => self.mem.write(addr, val),
-        }
+        let inst = self.fetch_instrucion();
+        let addr = self.fetch_operand(inst.mode);
+        self.instruction(inst.opcode, addr);
     }
 
     fn set_zero_and_negative_flags(&mut self, val: u8) {
         self.reg.set_zero_flag(val == 0);
-        self.reg.set_negative_flag(val & 0x80 != 0);
+        self.reg.set_negative_flag((val & 0x80) != 0);
     }
 
-    fn get_addr(&self, mode: AddressingMode) -> Addr {
-        let pc = self.reg.PC + 1;
-        let im8 = || self.mem.read(pc) as u8;
-        let im16 = || (self.mem.read(pc) as u16) | ((self.mem.read(pc+1) as u16) << 8);
-        match mode {
-            AddressingMode::Implied => Addr::None,
-            AddressingMode::Accumulator => Addr::Accumulator,
-            AddressingMode::Immediate => Addr::Immediate(im8()),
-            AddressingMode::ZeroPage => Addr::Memory(im8() as u16),
-            AddressingMode::ZeroPageX => Addr::Memory((im8() + self.reg.X) as u16),
-            AddressingMode::ZeroPageY => Addr::Memory((im8() + self.reg.Y) as u16),
-            AddressingMode::Absolute => Addr::Memory(im16()),
-            AddressingMode::AbsoluteX => Addr::Memory(im16() + self.reg.X as u16),
-            AddressingMode::AbsoluteY => Addr::Memory(im16() + self.reg.Y as u16),
-            AddressingMode::Indirect => Addr::Memory(im16()),
-            AddressingMode::IndirectX => Addr::Memory(self.read_dw(Addr::Memory((im8() + self.reg.X) as u16))),
-            AddressingMode::IndirectY => Addr::Memory(self.read_dw(Addr::Memory(im8() as u16)) + self.reg.Y as u16)
+    fn load_inst(&self, addr: Operand) -> u8 {
+        match addr {
+            Operand::None => unreachable!(),
+            Operand::Immediate(val) => val,
+            Operand::Accumulator => self.reg.A,
+            Operand::Memory(addr) => self.mem.load(addr),
         }
     }
 
-    fn exec(&mut self, op: Opcode, addr: Addr) {
+    fn write_inst(&mut self, addr: Operand, val: u8) {
+        match addr {
+            Operand::None => unreachable!(),
+            Operand::Immediate(_) => unreachable!(),
+            Operand::Accumulator => self.reg.A = val,
+            Operand::Memory(addr) => self.mem.store(addr, val),
+        }
+    }
+
+    fn jump_inst(&mut self, addr: Operand) {
+        match addr {
+            Operand::Immediate(val) => {
+                let pc = self.reg.PC + val as u16;
+                self.jump(pc);
+            },
+            Operand::Memory(addr) => self.jump(addr),
+            _ => unreachable!(),
+        }
+    }
+
+    fn comp_inst(&mut self, x: u8, m: u8) {
+        self.reg.set_carry_flag(x >= m);
+        self.reg.set_zero_flag(x == m);
+        self.reg.set_negative_flag(x < m);
+    }
+
+    fn jump(&mut self, addr: u16) {
+        self.reg.PC = addr;
+    }
+
+    fn push_stack(&mut self, val: u8) {
+        self.reg.S -= 1;
+        self.mem.store((self.reg.S+1) as u16, val);
+    }
+
+    fn push_stack_w(&mut self, val: u16) {
+        self.push_stack((val & 0xff) as u8);
+        self.push_stack((val >> 8) as u8);
+    }
+
+    fn pop_stack(&mut self) -> u8 {
+        self.reg.S += 1;
+        self.mem.load(self.reg.S as u16)
+    }
+
+    fn pop_stack_w(&mut self) -> u16 {
+        let high = self.pop_stack();
+        let low = self.pop_stack();
+        low as u16 | ((high as u16) << 8)
+    }
+
+    fn fetch_instrucion(&mut self) -> Instruction {
+        let code = self.mem.load(self.reg.PC);
+        self.reg.PC += 1;
+        lookup_instruction(code)
+    }
+
+    fn fetch_operand(&mut self, mode: AddressingMode) -> Operand {
+        self.reg.PC += match mode {
+            AddressingMode::Implied|AddressingMode::Accumulator => 0,
+            AddressingMode::Absolute|AddressingMode::AbsoluteX|AddressingMode::AbsoluteY|AddressingMode::Indirect => 2,
+            _ => 1
+        };
+        let im8 = || self.mem.load(self.reg.PC-1);
+        let im16 = || self.mem.load_w(self.reg.PC-2);
+        match mode {
+            AddressingMode::Implied => Operand::None,
+            AddressingMode::Accumulator => Operand::Accumulator,
+            AddressingMode::Immediate => Operand::Immediate(im8()),
+            AddressingMode::ZeroPage => Operand::Memory(im8() as u16),
+            AddressingMode::ZeroPageX => Operand::Memory((im8() + self.reg.X) as u16),
+            AddressingMode::ZeroPageY => Operand::Memory((im8() + self.reg.Y) as u16),
+            AddressingMode::Absolute => Operand::Memory(im16()),
+            AddressingMode::AbsoluteX => Operand::Memory(im16() + self.reg.X as u16),
+            AddressingMode::AbsoluteY => Operand::Memory(im16() + self.reg.Y as u16),
+            AddressingMode::Indirect => Operand::Memory(self.mem.load(im16()) as u16),
+            AddressingMode::IndirectX => Operand::Memory(self.mem.load_w((im8() + self.reg.X) as u16)),
+            AddressingMode::IndirectY => Operand::Memory(self.mem.load_w((im8() as u16)) + self.reg.Y as u16),
+            AddressingMode::Relative => Operand::Immediate(im8()),
+        }
+    }
+
+    fn instruction(&mut self, op: Opcode, addr: Operand) {
         match op {
             Opcode::LDA => {
-                let val = self.read(addr);
+                let val = self.load_inst(addr);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             },
             Opcode::LDX => {
-                let val = self.read(addr);
+                let val = self.load_inst(addr);
                 self.reg.X = val; 
                 self.set_zero_and_negative_flags(val);
             },
             Opcode::LDY => {
-                let val = self.read(addr);
+                let val = self.load_inst(addr);
                 self.reg.Y = val;
                 self.set_zero_and_negative_flags(val);
             },
+            Opcode::STA => {
+                let a = self.reg.A;
+                self.write_inst(addr, a);
+            },
             Opcode::STX => {
                 let x = self.reg.X;
-                self.write(addr, x);
+                self.write_inst(addr, x);
             },
             Opcode::STY => {
                 let y = self.reg.Y;
-                self.write(addr, y);
+                self.write_inst(addr, y);
             },
             Opcode::TAX => {
                 let val = self.reg.A;
@@ -132,82 +179,72 @@ impl<M: Memory> Cpu<M> {
             },
             Opcode::PHA => {
                 let val = self.reg.A;
-                self.mem.write(self.reg.S as u16, val);
-                self.reg.S -= 1;
+                self.push_stack(val);
             },
             Opcode::PHP => {
                 let val = self.reg.P;
-                self.mem.write(self.reg.S as u16, val);
-                self.reg.S -= 1;
+                self.push_stack(val);
             },
             Opcode::PLA => {
-                self.reg.S += 1;
-                let val = self.mem.read(self.reg.S as u16);
+                let val = self.pop_stack();
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             },
             Opcode::PLP => {
-                self.reg.S += 1;
-                let val = self.mem.read(self.reg.S as u16);
+                let val = self.pop_stack();
                 self.reg.P = val;
                 self.set_zero_and_negative_flags(val);
             },
             Opcode::AND => {
-                let val = self.reg.A & self.read(addr);
+                let val = self.reg.A & self.load_inst(addr);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             },
             Opcode::EOR => {
-                let val = self.reg.A ^ self.read(addr);
+                let val = self.reg.A ^ self.load_inst(addr);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             },
             Opcode::ORA => {
-                let val = self.reg.A | self.read(addr);
+                let val = self.reg.A | self.load_inst(addr);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             },
             Opcode::BIT => {
-                let val = self.reg.A | self.read(addr);
+                let val = self.reg.A | self.load_inst(addr);
                 self.reg.set_overflow_flag(val & 0x40 != 0);
                 self.reg.set_negative_flag(val & 0x80 != 0);
             },
             Opcode::ADC => {
                 // TODO: overflow and carry flag
-                let val = self.reg.A + self.read(addr) + self.reg.carry_flag() as u8;
+                let val = self.reg.A + self.load_inst(addr) + self.reg.carry_flag() as u8;
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             },
             Opcode::SBC => {
                 // TODO: overflow and carry flag
-                let val = self.reg.A - self.read(addr) - (1 - self.reg.carry_flag() as u8);
+                let val = self.reg.A - self.load_inst(addr) - (1 - self.reg.carry_flag() as u8);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             },
             Opcode::CMP => {
                 let a = self.reg.A;
-                let m = self.read(addr);
-                self.reg.set_carry_flag(a >= m);
-                self.reg.set_zero_flag(a == m);
-                self.reg.set_negative_flag(a < m);
+                let m = self.load_inst(addr);
+                self.comp_inst(a, m);
             },
             Opcode::CPX => {
                 let x = self.reg.X;
-                let m = self.read(addr);
-                self.reg.set_carry_flag(x >= m);
-                self.reg.set_zero_flag(x == m);
-                self.reg.set_negative_flag(x < m);
+                let m = self.load_inst(addr);
+                self.comp_inst(x, m);
             },
             Opcode::CPY => {
                 let y = self.reg.Y;
-                let m = self.read(addr);
-                self.reg.set_carry_flag(y >= m);
-                self.reg.set_zero_flag(y == m);
-                self.reg.set_negative_flag(y < m);
+                let m = self.load_inst(addr);
+                self.comp_inst(y, m);
             },
             Opcode::INC => {
-                let val = self.read(addr) + 1;
-                self.write(addr, val);
+                let val = self.load_inst(addr) + 1;
+                self.write_inst(addr, val);
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::INX => {
@@ -221,8 +258,8 @@ impl<M: Memory> Cpu<M> {
                 self.set_zero_and_negative_flags(val);
             },
             Opcode::DEC => {
-                let val = self.read(addr) - 1;
-                self.write(addr, val);
+                let val = self.load_inst(addr) - 1;
+                self.write_inst(addr, val);
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::DEX => {
@@ -236,34 +273,115 @@ impl<M: Memory> Cpu<M> {
                 self.set_zero_and_negative_flags(val);
             },
             Opcode::ASL => {
-                let val = self.read(addr);
+                let val = self.load_inst(addr);
                 self.reg.set_carry_flag(val & 0x80 != 0);
                 self.reg.set_negative_flag(val & 0x40 != 0);
                 self.reg.set_zero_flag(val == 0);
-                self.write(addr, (val & 0x7f) << 1);
+                self.write_inst(addr, (val & 0x7f) << 1);
             },
             Opcode::LSR => {
-                let val = self.read(addr);
+                let val = self.load_inst(addr);
                 self.reg.set_carry_flag(val & 0x01 != 0);
                 self.reg.set_negative_flag(false);
                 self.reg.set_zero_flag(val == 0);
-                self.write(addr, val >> 1);
+                self.write_inst(addr, val >> 1);
             },
             Opcode::ROL => {
-                let val = self.read(addr);
+                let val = self.load_inst(addr);
                 self.reg.set_carry_flag(val & 0x80 != 0);
                 self.reg.set_negative_flag(val & 0x40 != 0);
                 self.reg.set_zero_flag(val == 0);
-                self.write(addr, ((val & 0x7f) << 1) | ((val & 0x80) >> 7));
+                self.write_inst(addr, ((val & 0x7f) << 1) | ((val & 0x80) >> 7));
             },
             Opcode::ROR => {
-                let val = self.read(addr);
+                let val = self.load_inst(addr);
                 self.reg.set_carry_flag(val & 0x01 != 0);
                 self.reg.set_negative_flag(val & 0x01 != 0);
                 self.reg.set_zero_flag(val == 0);
-                self.write(addr, (val >> 1) | ((val & 0x01) << 7));
+                self.write_inst(addr, (val >> 1) | ((val & 0x01) << 7));
             },
-            _ => unimplemented!()
+            Opcode::JMP => {
+                self.jump_inst(addr);
+            },
+            Opcode::JSR => {
+                let pc = self.reg.PC-1;
+                self.push_stack_w(pc);
+                self.jump_inst(addr);
+            }
+            Opcode::RTS => {
+                let addr = self.pop_stack_w();
+                self.jump(addr+1);
+            }
+            Opcode::BCC => {
+                if !self.reg.carry_flag() {
+                    self.jump_inst(addr);
+                }
+            },
+            Opcode::BCS => {
+                if self.reg.carry_flag() {
+                    self.jump_inst(addr);
+                }
+            },
+            Opcode::BEQ => {
+                if self.reg.zero_flag() {
+                    self.jump_inst(addr);
+                }
+            },
+            Opcode::BMI => {
+                if self.reg.negative_flag() {
+                    self.jump_inst(addr);
+                }
+            },
+            Opcode::BNE => {
+                if !self.reg.zero_flag() {
+                    self.jump_inst(addr);
+                }
+            },
+            Opcode::BPL => {
+                if !self.reg.negative_flag() {
+                    self.jump_inst(addr);
+                }
+            },
+            Opcode::BVC => {
+                if !self.reg.overflow_flag() {
+                    self.jump_inst(addr);
+                }
+            },
+            Opcode::BVS => {
+                if self.reg.overflow_flag() {
+                    self.jump_inst(addr);
+                }
+            },
+            Opcode::CLC => {
+                self.reg.set_carry_flag(false);
+            },
+            Opcode::CLD => {
+                // unimplemented in NES
+            },
+            Opcode::CLI => {
+                unimplemented!()
+            },
+            Opcode::CLV => {
+                self.reg.set_overflow_flag(false);
+            },
+            Opcode::SEC => {
+                self.reg.set_carry_flag(false);
+            },
+            Opcode::SED => {
+                // unimplemented in NES
+            },
+            Opcode::SEI => {
+                unimplemented!()
+            },
+            Opcode::BRK => {
+                unimplemented!()
+            },
+            Opcode::NOP => {
+                // no operation
+            },
+            Opcode::RTI => {
+                unimplemented!()
+            }
         }
     }
 }
