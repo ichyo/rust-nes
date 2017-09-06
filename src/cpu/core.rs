@@ -13,13 +13,24 @@ enum Operand {
 pub struct Cpu<M: Memory> {
     pub reg: Register,
     mem: M,
+
+    remaining_clocks: u8,
 }
 
 impl<M: Memory> Cpu<M> {
+    pub fn clock(&mut self) {
+        if self.remaining_clocks > 0 {
+            self.remaining_clocks -= 1;
+        } else {
+            self.step();
+        }
+    }
+
     pub fn step(&mut self) {
         let inst = self.fetch_instrucion();
         let addr = self.fetch_operand(inst.mode);
         self.instruction(inst.opcode, addr);
+        self.remaining_clocks = inst.steps-1;
     }
 
     fn set_zero_and_negative_flags(&mut self, val: u8) {
