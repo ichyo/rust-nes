@@ -10,7 +10,7 @@ fn run() -> Result<(), Box<Error>> {
     let mut f = std::fs::File::open(path)?;
     let mut buf = Vec::new();
     f.read_to_end(&mut buf);
-    Cartridge::parse(&buf)?;
+    let cartridge = Cartridge::parse(&buf)?;
     Ok(())
 }
 
