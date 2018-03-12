@@ -1,6 +1,6 @@
-use memory::Memory;
-use super::register::Register;
-use super::instructions::{lookup_instruction, AddressingMode, Instruction, Opcode};
+use cpu::bus::Bus;
+use cpu::register::Register;
+use cpu::instructions::{lookup_instruction, AddressingMode, Instruction, Opcode};
 
 #[derive(Debug, Copy, Clone)]
 enum Operand {
@@ -10,27 +10,35 @@ enum Operand {
     Memory(u16),
 }
 
-pub struct Cpu<M: Memory> {
+pub struct Cpu<'a> {
     pub reg: Register,
-    mem: M,
-
-    remaining_clocks: u8,
+    bus: Bus<'a>,
 }
 
-impl<M: Memory> Cpu<M> {
-    pub fn clock(&mut self) {
-        if self.remaining_clocks > 0 {
-            self.remaining_clocks -= 1;
-        } else {
-            self.step();
+impl<'a> Cpu<'a> {
+    pub fn new(bus: Bus<'a>) -> Self {
+        Cpu {
+            reg: Register::new(),
+            bus: bus,
         }
     }
+}
 
-    pub fn step(&mut self) {
+impl<'a> Cpu<'a> {
+    // Fetches and executes instruction and returns the number of clocks
+    pub fn exec(&mut self) -> u8 {
+        eprintln!("reg: {:?}", self.reg);
         let inst = self.fetch_instrucion();
         let addr = self.fetch_operand(inst.mode);
-        self.instruction(inst.opcode, addr);
-        self.remaining_clocks = inst.steps - 1;
+        eprintln!("{:?} {:?}", inst, addr);
+        self.execute_instruction(inst.opcode, addr);
+        eprintln!("reg: {:?}", self.reg);
+        inst.cycles
+    }
+
+    pub fn reset(&mut self) {
+        self.reg = Register::new();
+        self.reg.PC = self.bus.load_w(0xfffc);
     }
 
     fn set_zero_and_negative_flags(&mut self, val: u8) {
@@ -43,7 +51,7 @@ impl<M: Memory> Cpu<M> {
             Operand::None => unreachable!(),
             Operand::Immediate(val) => val,
             Operand::Accumulator => self.reg.A,
-            Operand::Memory(addr) => self.mem.load(addr),
+            Operand::Memory(addr) => self.bus.load(addr),
         }
     }
 
@@ -52,7 +60,7 @@ impl<M: Memory> Cpu<M> {
             Operand::None => unreachable!(),
             Operand::Immediate(_) => unreachable!(),
             Operand::Accumulator => self.reg.A = val,
-            Operand::Memory(addr) => self.mem.store(addr, val),
+            Operand::Memory(addr) => self.bus.store(addr, val),
         }
     }
 
@@ -79,7 +87,7 @@ impl<M: Memory> Cpu<M> {
 
     fn push_stack(&mut self, val: u8) {
         self.reg.S -= 1;
-        self.mem.store((self.reg.S + 1) as u16, val);
+        self.bus.store((self.reg.S + 1) as u16 + 0x100, val);
     }
 
     fn push_stack_w(&mut self, val: u16) {
@@ -89,7 +97,7 @@ impl<M: Memory> Cpu<M> {
 
     fn pop_stack(&mut self) -> u8 {
         self.reg.S += 1;
-        self.mem.load(self.reg.S as u16)
+        self.bus.load(self.reg.S as u16 + 0x100)
     }
 
     fn pop_stack_w(&mut self) -> u16 {
@@ -99,7 +107,7 @@ impl<M: Memory> Cpu<M> {
     }
 
     fn fetch_instrucion(&mut self) -> Instruction {
-        let code = self.mem.load(self.reg.PC);
+        let code = self.bus.load(self.reg.PC);
         self.reg.PC += 1;
         lookup_instruction(code)
     }
@@ -113,8 +121,8 @@ impl<M: Memory> Cpu<M> {
             | AddressingMode::Indirect => 2,
             _ => 1,
         };
-        let im8 = || self.mem.load(self.reg.PC - 1);
-        let im16 = || self.mem.load_w(self.reg.PC - 2);
+        let im8 = || self.bus.load(self.reg.PC - 1);
+        let im16 = || self.bus.load_w(self.reg.PC - 2);
         match mode {
             AddressingMode::Implied => Operand::None,
             AddressingMode::Accumulator => Operand::Accumulator,
@@ -125,18 +133,18 @@ impl<M: Memory> Cpu<M> {
             AddressingMode::Absolute => Operand::Memory(im16()),
             AddressingMode::AbsoluteX => Operand::Memory(im16() + self.reg.X as u16),
             AddressingMode::AbsoluteY => Operand::Memory(im16() + self.reg.Y as u16),
-            AddressingMode::Indirect => Operand::Memory(self.mem.load(im16()) as u16),
+            AddressingMode::Indirect => Operand::Memory(self.bus.load(im16()) as u16),
             AddressingMode::IndirectX => {
-                Operand::Memory(self.mem.load_w((im8() + self.reg.X) as u16))
+                Operand::Memory(self.bus.load_w((im8() + self.reg.X) as u16))
             }
             AddressingMode::IndirectY => {
-                Operand::Memory(self.mem.load_w((im8() as u16)) + self.reg.Y as u16)
+                Operand::Memory(self.bus.load_w(im8() as u16) + self.reg.Y as u16)
             }
             AddressingMode::Relative => Operand::Immediate(im8()),
         }
     }
 
-    fn instruction(&mut self, op: Opcode, addr: Operand) {
+    fn execute_instruction(&mut self, op: Opcode, addr: Operand) {
         match op {
             Opcode::LDA => {
                 let val = self.load_inst(addr);

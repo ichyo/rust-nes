@@ -10,6 +10,16 @@ pub struct Register {
 }
 
 impl Register {
+    pub fn new() -> Self {
+        Register {
+            A: 0x00,
+            X: 0x00,
+            Y: 0x00,
+            S: 0xff,
+            P: 0x24,
+            PC: 0x00,
+        }
+    }
     pub fn carry_flag(&self) -> bool {
         self.P & 0x01 != 0
     }
