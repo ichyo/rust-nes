@@ -17,7 +17,7 @@ fn main() {
     let bus = Bus::new(&cartridge, &mut wram);
     let mut cpu = Cpu::new(bus);
     cpu.reset();
-    for _ in 0..100 {
+    for _ in 0..1000 {
         cpu.exec();
     }
 }

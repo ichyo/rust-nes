@@ -15,9 +15,15 @@ impl<'a> Bus<'a> {
         if addr < 0x2000 {
             self.wram.load(addr & 0x7ff) // TODO: correct for mirror mode?
         } else if addr < 0x8000 {
-            unreachable!();
+            eprintln!("warning: not implemented to load {:#x}", addr);
+            0
         } else {
-            self.cartridge.prg_rom[((addr - 0x8000) & 0x3fff) as usize]
+            let addr = (addr - 0x8000) as usize;
+            eprintln!(
+                "load prg[{:#x}] = {:#x}",
+                addr, self.cartridge.prg_rom[addr]
+            );
+            self.cartridge.prg_rom[addr]
         }
     }
 
@@ -25,7 +31,10 @@ impl<'a> Bus<'a> {
         if addr < 0x2000 {
             self.wram.store(addr & 0x7ff, val) // TODO: correct for mirror mode?
         } else if addr < 0x8000 {
-            unreachable!();
+            eprintln!(
+                "warning: not implemented to set {:#x} at address {:#x}",
+                val, addr
+            );
         } else {
             unreachable!();
         }

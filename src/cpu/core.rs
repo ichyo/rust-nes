@@ -27,12 +27,12 @@ impl<'a> Cpu<'a> {
 impl<'a> Cpu<'a> {
     // Fetches and executes instruction and returns the number of clocks
     pub fn exec(&mut self) -> u8 {
-        eprintln!("reg: {:?}", self.reg);
+        eprintln!("before inst: {:?}", self.reg);
         let inst = self.fetch_instrucion();
         let addr = self.fetch_operand(inst.mode);
         eprintln!("{:?} {:?}", inst, addr);
         self.execute_instruction(inst.opcode, addr);
-        eprintln!("reg: {:?}", self.reg);
+        eprintln!("after inst: {:?}", self.reg);
         inst.cycles
     }
 
@@ -67,8 +67,8 @@ impl<'a> Cpu<'a> {
     fn jump_inst(&mut self, addr: Operand) {
         match addr {
             Operand::Immediate(val) => {
-                let pc = self.reg.PC + val as u16;
-                self.jump(pc);
+                let pc = self.reg.PC as i32 + (val as i8) as i32;
+                self.jump(pc as u16);
             }
             Operand::Memory(addr) => self.jump(addr),
             _ => unreachable!(),
@@ -384,7 +384,9 @@ impl<'a> Cpu<'a> {
             Opcode::CLD => {
                 // unimplemented in NES
             }
-            Opcode::CLI => unimplemented!(),
+            Opcode::CLI => {
+                self.reg.set_interrupt_disable_flag(false);
+            }
             Opcode::CLV => {
                 self.reg.set_overflow_flag(false);
             }
@@ -394,7 +396,9 @@ impl<'a> Cpu<'a> {
             Opcode::SED => {
                 // unimplemented in NES
             }
-            Opcode::SEI => unimplemented!(),
+            Opcode::SEI => {
+                self.reg.set_interrupt_disable_flag(true);
+            }
             Opcode::BRK => unimplemented!(),
             Opcode::NOP => {
                 // no operation
