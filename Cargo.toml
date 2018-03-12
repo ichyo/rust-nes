@@ -5,3 +5,4 @@ authors = ["ichyo"]
 
 [dependencies]
 lazy_static = "0.2"
+image = "*"

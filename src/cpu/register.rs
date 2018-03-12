@@ -1,12 +1,12 @@
 #[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct Register {
-    pub A: u8, // accumulator
-    pub X: u8, // index register
-    pub Y: u8, // index register
-    pub S: u8, // stack pointer
-    pub P: u8, // status register
-    pub PC: u16 // program counter
+    pub A: u8,   // accumulator
+    pub X: u8,   // index register
+    pub Y: u8,   // index register
+    pub S: u8,   // stack pointer
+    pub P: u8,   // status register
+    pub PC: u16, // program counter
 }
 
 impl Register {

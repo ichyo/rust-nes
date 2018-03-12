@@ -3,7 +3,7 @@ use std::collections::HashMap;
 pub fn lookup_instruction(code: u8) -> Instruction {
     match INSTRUCTION_SET.get(&code) {
         Some(inst) => *inst,
-        None => panic!("invalid instruction code")
+        None => panic!("invalid instruction code"),
     }
 }
 
@@ -11,7 +11,7 @@ pub fn lookup_instruction(code: u8) -> Instruction {
 pub struct Instruction {
     pub opcode: Opcode,
     pub mode: AddressingMode,
-    pub steps: u8
+    pub steps: u8,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -33,17 +33,61 @@ pub enum AddressingMode {
 
 #[derive(Debug, Copy, Clone)]
 pub enum Opcode {
-    ADC, AND, ASL, BCC, BCS,
-    BEQ, BIT, BMI, BNE, BPL,
-    BRK, BVC, BVS, CLC, CLD,
-    CLI, CLV, CMP, CPX, CPY,
-    DEC, DEX, DEY, EOR, INC,
-    INX, INY, JMP, JSR, LDA,
-    LDX, LDY, LSR, NOP, ORA,
-    PHA, PHP, PLA, PLP, ROL,
-    ROR, RTI, RTS, SBC, SEC,
-    SED, SEI, STA, STX, STY,
-    TAX, TAY, TSX, TXA, TXS,
+    ADC,
+    AND,
+    ASL,
+    BCC,
+    BCS,
+    BEQ,
+    BIT,
+    BMI,
+    BNE,
+    BPL,
+    BRK,
+    BVC,
+    BVS,
+    CLC,
+    CLD,
+    CLI,
+    CLV,
+    CMP,
+    CPX,
+    CPY,
+    DEC,
+    DEX,
+    DEY,
+    EOR,
+    INC,
+    INX,
+    INY,
+    JMP,
+    JSR,
+    LDA,
+    LDX,
+    LDY,
+    LSR,
+    NOP,
+    ORA,
+    PHA,
+    PHP,
+    PLA,
+    PLP,
+    ROL,
+    ROR,
+    RTI,
+    RTS,
+    SBC,
+    SEC,
+    SED,
+    SEI,
+    STA,
+    STX,
+    STY,
+    TAX,
+    TAY,
+    TSX,
+    TXA,
+    TXS,
     TYA,
 }
 
