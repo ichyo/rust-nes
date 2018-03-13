@@ -114,6 +114,11 @@ lazy_static! {
             mode: AddressingMode::ZeroPage,
             cycles: 5
         });
+        m.insert(0x08, Instruction{
+            opcode: Opcode::PHP,
+            mode: AddressingMode::Implied,
+            cycles: 3
+        });
         m.insert(0x09, Instruction{
             opcode: Opcode::ORA,
             mode: AddressingMode::Immediate,
@@ -154,6 +159,11 @@ lazy_static! {
             mode: AddressingMode::ZeroPageX,
             cycles: 6
         });
+        m.insert(0x18, Instruction{
+            opcode: Opcode::CLC,
+            mode: AddressingMode::Implied,
+            cycles: 2,
+        });
         m.insert(0x19, Instruction{
             opcode: Opcode::ORA,
             mode: AddressingMode::AbsoluteY,
@@ -193,6 +203,11 @@ lazy_static! {
             opcode: Opcode::ROL,
             mode: AddressingMode::ZeroPage,
             cycles: 5
+        });
+        m.insert(0x28, Instruction{
+            opcode: Opcode::PLP,
+            mode: AddressingMode::Implied,
+            cycles: 4
         });
         m.insert(0x29, Instruction{
             opcode: Opcode::AND,
@@ -239,6 +254,11 @@ lazy_static! {
             mode: AddressingMode::ZeroPageX,
             cycles: 6
         });
+        m.insert(0x38, Instruction{
+            opcode: Opcode::SEC,
+            mode: AddressingMode::Implied,
+            cycles: 2,
+        });
         m.insert(0x39, Instruction{
             opcode: Opcode::AND,
             mode: AddressingMode::AbsoluteY,
@@ -273,6 +293,11 @@ lazy_static! {
             opcode: Opcode::LSR,
             mode: AddressingMode::ZeroPage,
             cycles: 5
+        });
+        m.insert(0x48, Instruction{
+            opcode: Opcode::PHA,
+            mode: AddressingMode::Implied,
+            cycles: 3,
         });
         m.insert(0x49, Instruction{
             opcode: Opcode::EOR,
@@ -319,6 +344,11 @@ lazy_static! {
             mode: AddressingMode::ZeroPageX,
             cycles: 6
         });
+        m.insert(0x58, Instruction{
+            opcode: Opcode::CLI,
+            mode: AddressingMode::Implied,
+            cycles: 2,
+        });
         m.insert(0x59, Instruction{
             opcode: Opcode::EOR,
             mode: AddressingMode::AbsoluteY,
@@ -354,6 +384,11 @@ lazy_static! {
             mode: AddressingMode::ZeroPage,
             cycles: 5
         });
+        m.insert(0x68, Instruction{
+            opcode: Opcode::PLA,
+            mode: AddressingMode::Implied,
+            cycles: 4
+        });
         m.insert(0x69, Instruction{
             opcode: Opcode::ADC,
             mode: AddressingMode::Immediate,
@@ -380,7 +415,7 @@ lazy_static! {
             cycles: 6
         });
         m.insert(0x70, Instruction{
-            opcode: Opcode::BCS,
+            opcode: Opcode::BVS,
             mode: AddressingMode::Relative,
             cycles: 2
         });
@@ -594,10 +629,20 @@ lazy_static! {
             mode: AddressingMode::ZeroPageY,
             cycles: 4
         });
+        m.insert(0xb8, Instruction{
+            opcode: Opcode::CLV,
+            mode: AddressingMode::Implied,
+            cycles: 2,
+        });
         m.insert(0xb9, Instruction{
             opcode: Opcode::LDA,
             mode: AddressingMode::AbsoluteY,
             cycles: 4
+        });
+        m.insert(0xba, Instruction{
+            opcode: Opcode::TSX,
+            mode: AddressingMode::Implied,
+            cycles: 2,
         });
         m.insert(0xbc, Instruction{
             opcode: Opcode::LDY,
@@ -689,6 +734,11 @@ lazy_static! {
             mode: AddressingMode::ZeroPageX,
             cycles: 6
         });
+        m.insert(0xd8, Instruction{
+            opcode: Opcode::CLD,
+            mode: AddressingMode::Implied,
+            cycles: 2,
+        });
         m.insert(0xd9, Instruction{
             opcode: Opcode::CMP,
             mode: AddressingMode::AbsoluteY,
@@ -778,6 +828,11 @@ lazy_static! {
             opcode: Opcode::INC,
             mode: AddressingMode::ZeroPageX,
             cycles: 6
+        });
+        m.insert(0xf8, Instruction{
+            opcode: Opcode::SED,
+            mode: AddressingMode::Implied,
+            cycles: 2,
         });
         m.insert(0xf9, Instruction{
             opcode: Opcode::SBC,

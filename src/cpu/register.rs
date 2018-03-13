@@ -16,7 +16,7 @@ impl Register {
             X: 0x00,
             Y: 0x00,
             S: 0xff,
-            P: 0x24,
+            P: 0x34,
             PC: 0x00,
         }
     }
