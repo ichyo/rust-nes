@@ -6,6 +6,7 @@ use std::fs::File;
 use nes::cartridge::Cartridge;
 use nes::memory::Memory;
 use nes::cpu::{Bus, Cpu};
+use nes::apu::Apu;
 
 fn main() {
     let path = env::args().nth(1).expect("please specify the path to nes");
@@ -14,10 +15,11 @@ fn main() {
     f.read_to_end(&mut buffer).expect("failed to read a file");
     let cartridge = Cartridge::parse(&buffer).expect("invalid nes format");
     let mut wram = Memory::new();
-    let bus = Bus::new(&cartridge, &mut wram);
+    let mut apu = Apu::new();
+    let bus = Bus::new(&cartridge, &mut wram, &mut apu);
     let mut cpu = Cpu::new(bus);
     cpu.reset();
-    for _ in 0..1000 {
+    for _ in 0..100000 {
         cpu.exec();
     }
 }

@@ -274,12 +274,12 @@ impl<'a> Cpu<'a> {
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::INX => {
-                let val = self.reg.X + 1;
+                let val = self.reg.X.wrapping_add(1);
                 self.reg.X = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::INY => {
-                let val = self.reg.Y + 1;
+                let val = self.reg.Y.wrapping_add(1);
                 self.reg.Y = val;
                 self.set_zero_and_negative_flags(val);
             }
@@ -289,12 +289,12 @@ impl<'a> Cpu<'a> {
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::DEX => {
-                let val = self.reg.X - 1;
+                let val = self.reg.X.wrapping_sub(1);
                 self.reg.X = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::DEY => {
-                let val = self.reg.Y - 1;
+                let val = self.reg.Y.wrapping_sub(1);
                 self.reg.Y = val;
                 self.set_zero_and_negative_flags(val);
             }

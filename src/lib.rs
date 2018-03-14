@@ -4,6 +4,7 @@ extern crate lazy_static;
 pub mod cartridge;
 pub mod cpu;
 pub mod memory;
+pub mod apu;
 
 #[cfg(test)]
 mod tests {
