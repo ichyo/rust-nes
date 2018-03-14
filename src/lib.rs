@@ -5,6 +5,7 @@ pub mod cartridge;
 pub mod cpu;
 pub mod memory;
 pub mod apu;
+pub mod ppu;
 
 #[cfg(test)]
 mod tests {

@@ -1,18 +1,26 @@
 use memory::Memory;
 use cartridge::Cartridge;
 use apu::Apu;
+use ppu::Ppu;
 
 pub struct Bus<'a> {
     cartridge: &'a Cartridge,
     wram: &'a mut Memory,
+    ppu: &'a mut Ppu,
     apu: &'a mut Apu,
 }
 
 impl<'a> Bus<'a> {
-    pub fn new(cartridge: &'a Cartridge, wram: &'a mut Memory, apu: &'a mut Apu) -> Bus<'a> {
+    pub fn new(
+        cartridge: &'a Cartridge,
+        wram: &'a mut Memory,
+        ppu: &'a mut Ppu,
+        apu: &'a mut Apu,
+    ) -> Bus<'a> {
         Bus {
             cartridge,
             wram,
+            ppu,
             apu,
         }
     }
@@ -21,18 +29,17 @@ impl<'a> Bus<'a> {
         if addr < 0x2000 {
             self.wram.load(addr & 0x7ff) // TODO: correct for mirror mode?
         } else if addr < 0x4000 {
-            // TODO: implement PPU register
-            0x80
+            self.ppu.load((addr - 0x2000) & 0x7)
         } else if addr < 0x4020 {
             if addr == 0x4016 || addr == 0x4017 {
-                // TODO: implement joy pad
+                // TODO: implement key pad
                 0
             } else {
-                self.apu.load(addr)
+                self.apu.load(addr - 0x4000)
             }
         } else if addr < 0x8000 {
-            eprintln!("warning: not implemented to load {:#x}", addr);
-            0
+            eprintln!("error: not implemented to load {:#x}", addr);
+            unreachable!()
         } else {
             let addr = (addr - 0x8000) as usize;
             eprintln!(
@@ -47,20 +54,19 @@ impl<'a> Bus<'a> {
         if addr < 0x2000 {
             self.wram.store(addr & 0x7ff, val) // TODO: correct for mirror mode?
         } else if addr < 0x4000 {
-            // TODO: implement PPU register
+            self.ppu.store((addr - 0x2000) & 0x7, val);
         } else if addr < 0x4020 {
             if addr == 0x4016 || addr == 0x4017 {
-                // TODO: implement joy pad
+                // TODO: implement key pad
             } else {
-                self.apu.store(addr, val)
+                self.apu.store(addr - 0x4000, val)
             }
-        } else if addr < 0x8000 {
+        } else {
             eprintln!(
-                "warning: not implemented to set {:#x} at address {:#x}",
+                "error: not implemented to set {:#x} at address {:#x}",
                 val, addr
             );
-        } else {
-            unreachable!();
+            unreachable!()
         }
     }
 
