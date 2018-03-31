@@ -5,10 +5,10 @@ impl Apu {
         Apu {}
     }
     pub fn load(&self, addr: u16) -> u8 {
-        eprintln!("[Apu] load addr={:#x}", addr);
+        trace!("Load addr={:#x}", addr);
         0
     }
     pub fn store(&mut self, addr: u16, val: u8) {
-        eprintln!("[Apu] store addr={:#x} val={:#x}", addr, val);
+        trace!("Store addr={:#x} val={:#x}", addr, val);
     }
 }

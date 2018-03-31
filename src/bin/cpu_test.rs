@@ -1,3 +1,5 @@
+extern crate env_logger;
+extern crate log;
 extern crate nes;
 
 use std::env;
@@ -7,8 +9,13 @@ use nes::cartridge::Cartridge;
 use nes::memory::Memory;
 use nes::cpu::{Bus, Cpu};
 use nes::apu::Apu;
+use nes::ppu::Ppu;
 
 fn main() {
+    env_logger::Builder::new()
+        .filter(None, log::LevelFilter::max())
+        .init();
+
     let path = env::args().nth(1).expect("please specify the path to nes");
     let mut f = File::open(path).expect("failed to open file");
     let mut buffer = Vec::new();
@@ -16,10 +23,11 @@ fn main() {
     let cartridge = Cartridge::parse(&buffer).expect("invalid nes format");
     let mut wram = Memory::new();
     let mut apu = Apu::new();
-    let bus = Bus::new(&cartridge, &mut wram, &mut apu);
+    let mut ppu = Ppu::new(&cartridge.chr_rom);
+    let bus = Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu);
     let mut cpu = Cpu::new(bus);
     cpu.reset();
-    for _ in 0..100000 {
+    for _ in 0..1000 {
         cpu.exec();
     }
 }

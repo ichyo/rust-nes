@@ -38,14 +38,10 @@ impl<'a> Bus<'a> {
                 self.apu.load(addr - 0x4000)
             }
         } else if addr < 0x8000 {
-            eprintln!("error: not implemented to load {:#x}", addr);
+            error!("It's not implemented to load {:#x}", addr);
             unreachable!()
         } else {
             let addr = (addr - 0x8000) as usize;
-            eprintln!(
-                "load prg[{:#x}] = {:#x}",
-                addr, self.cartridge.prg_rom[addr]
-            );
             self.cartridge.prg_rom[addr]
         }
     }

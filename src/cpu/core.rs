@@ -27,12 +27,11 @@ impl<'a> Cpu<'a> {
 impl<'a> Cpu<'a> {
     // Fetches and executes instruction and returns the number of clocks
     pub fn exec(&mut self) -> u8 {
-        eprintln!("before inst: {:?}", self.reg);
         let inst = self.fetch_instrucion();
         let addr = self.fetch_operand(inst.mode);
-        eprintln!("{:?} {:?}", inst, addr);
+        trace!("Execute inst={:?} addr={:?}", inst, addr);
         self.execute_instruction(inst.opcode, addr);
-        eprintln!("after inst: {:?}", self.reg);
+        trace!("Changed to {:?}", self.reg);
         inst.cycles
     }
 
