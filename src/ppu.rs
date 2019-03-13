@@ -1,3 +1,5 @@
+use log::{error, log, trace, warn};
+
 pub struct Ppu {
     reg_ctrl: u8,
     reg_mask: u8,

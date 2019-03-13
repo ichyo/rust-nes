@@ -1,7 +1,8 @@
-use memory::Memory;
-use cartridge::Cartridge;
-use apu::Apu;
-use ppu::Ppu;
+use crate::apu::Apu;
+use crate::cartridge::Cartridge;
+use crate::memory::Memory;
+use crate::ppu::Ppu;
+use log::{error, log};
 
 pub struct Bus<'a> {
     cartridge: &'a Cartridge,

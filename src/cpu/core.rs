@@ -1,6 +1,7 @@
-use cpu::bus::Bus;
-use cpu::register::Register;
-use cpu::instructions::{lookup_instruction, AddressingMode, Instruction, Opcode};
+use super::bus::Bus;
+use super::instructions::{lookup_instruction, AddressingMode, Instruction, Opcode};
+use super::register::Register;
+use log::{log, trace};
 
 #[derive(Debug, Copy, Clone)]
 enum Operand {
@@ -19,7 +20,7 @@ impl<'a> Cpu<'a> {
     pub fn new(bus: Bus<'a>) -> Self {
         Cpu {
             reg: Register::new(),
-            bus: bus,
+            bus,
         }
     }
 }

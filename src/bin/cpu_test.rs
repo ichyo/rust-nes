@@ -2,14 +2,14 @@ extern crate env_logger;
 extern crate log;
 extern crate nes;
 
-use std::env;
-use std::io::prelude::*;
-use std::fs::File;
-use nes::cartridge::Cartridge;
-use nes::memory::Memory;
-use nes::cpu::{Bus, Cpu};
 use nes::apu::Apu;
+use nes::cartridge::Cartridge;
+use nes::cpu::{Bus, Cpu};
+use nes::memory::Memory;
 use nes::ppu::Ppu;
+use std::env;
+use std::fs::File;
+use std::io::prelude::*;
 
 fn main() {
     env_logger::Builder::new()

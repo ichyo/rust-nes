@@ -1,3 +1,5 @@
+use log::{log, trace};
+
 pub struct Apu {}
 
 impl Apu {

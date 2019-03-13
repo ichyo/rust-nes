@@ -1,11 +1,11 @@
 extern crate image;
 extern crate nes;
 
-use std::env;
-use std::io::prelude::*;
-use std::fs::File;
+use image::ImageBuffer;
 use nes::cartridge::Cartridge;
-use image::{GenericImage, ImageBuffer};
+use std::env;
+use std::fs::File;
+use std::io::prelude::*;
 
 struct Sprite([[u8; 8]; 8]);
 

@@ -1,5 +1,3 @@
-use cartridge::Cartridge;
-
 const MEMORY_LENGTH: usize = 2 * 1024;
 
 pub struct Memory([u8; MEMORY_LENGTH]);
