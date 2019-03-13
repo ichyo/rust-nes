@@ -1,7 +1,7 @@
 use super::bus::Bus;
 use super::instructions::{lookup_instruction, AddressingMode, Instruction, Opcode};
 use super::register::Register;
-use log::{log, trace};
+use log::trace;
 
 #[derive(Debug, Copy, Clone)]
 enum Operand {

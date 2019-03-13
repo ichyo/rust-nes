@@ -69,8 +69,7 @@ fn main() {
         }
     }
 
-    let mut pngf = File::create("output.png").expect("failed to create output png");
     image::ImageLuma8(img)
-        .save(&mut pngf, image::PNG)
+        .save("output.png")
         .expect("failed to write png file");
 }

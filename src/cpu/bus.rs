@@ -2,7 +2,7 @@ use crate::apu::Apu;
 use crate::cartridge::Cartridge;
 use crate::memory::Memory;
 use crate::ppu::Ppu;
-use log::{error, log};
+use log::error;
 
 pub struct Bus<'a> {
     cartridge: &'a Cartridge,

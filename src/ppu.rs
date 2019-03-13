@@ -1,4 +1,4 @@
-use log::{error, log, trace, warn};
+use log::{error, trace, warn};
 
 pub struct Ppu {
     reg_ctrl: u8,

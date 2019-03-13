@@ -1,4 +1,4 @@
-use log::{log, trace};
+use log::trace;
 
 #[derive(Default)]
 pub struct Apu {}
