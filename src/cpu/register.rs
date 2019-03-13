@@ -9,6 +9,12 @@ pub struct Register {
     pub PC: u16, // program counter
 }
 
+impl Default for Register {
+    fn default() -> Register {
+        Register::new()
+    }
+}
+
 impl Register {
     pub fn new() -> Self {
         Register {

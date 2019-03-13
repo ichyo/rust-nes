@@ -67,7 +67,7 @@ impl<'a> Cpu<'a> {
     fn jump_inst(&mut self, addr: Operand) {
         match addr {
             Operand::Immediate(val) => {
-                let pc = self.reg.PC as i32 + (val as i8) as i32;
+                let pc = i32::from(self.reg.PC) + i32::from(val);
                 self.jump(pc as u16);
             }
             Operand::Memory(addr) => self.jump(addr),
@@ -87,7 +87,7 @@ impl<'a> Cpu<'a> {
 
     fn push_stack(&mut self, val: u8) {
         self.reg.S -= 1;
-        self.bus.store((self.reg.S + 1) as u16 + 0x100, val);
+        self.bus.store(u16::from(self.reg.S + 1) + 0x100, val);
     }
 
     fn push_stack_w(&mut self, val: u16) {
@@ -97,13 +97,13 @@ impl<'a> Cpu<'a> {
 
     fn pop_stack(&mut self) -> u8 {
         self.reg.S += 1;
-        self.bus.load(self.reg.S as u16 + 0x100)
+        self.bus.load(u16::from(self.reg.S) + 0x100)
     }
 
     fn pop_stack_w(&mut self) -> u16 {
         let high = self.pop_stack();
         let low = self.pop_stack();
-        low as u16 | ((high as u16) << 8)
+        u16::from(low) | (u16::from(high) << 8)
     }
 
     fn fetch_instrucion(&mut self) -> Instruction {
@@ -127,18 +127,18 @@ impl<'a> Cpu<'a> {
             AddressingMode::Implied => Operand::None,
             AddressingMode::Accumulator => Operand::Accumulator,
             AddressingMode::Immediate => Operand::Immediate(im8()),
-            AddressingMode::ZeroPage => Operand::Memory(im8() as u16),
-            AddressingMode::ZeroPageX => Operand::Memory((im8() + self.reg.X) as u16),
-            AddressingMode::ZeroPageY => Operand::Memory((im8() + self.reg.Y) as u16),
+            AddressingMode::ZeroPage => Operand::Memory(u16::from(im8())),
+            AddressingMode::ZeroPageX => Operand::Memory(u16::from(im8() + self.reg.X)),
+            AddressingMode::ZeroPageY => Operand::Memory(u16::from(im8() + self.reg.Y)),
             AddressingMode::Absolute => Operand::Memory(im16()),
-            AddressingMode::AbsoluteX => Operand::Memory(im16() + self.reg.X as u16),
-            AddressingMode::AbsoluteY => Operand::Memory(im16() + self.reg.Y as u16),
-            AddressingMode::Indirect => Operand::Memory(self.bus.load(im16()) as u16),
+            AddressingMode::AbsoluteX => Operand::Memory(im16() + u16::from(self.reg.X)),
+            AddressingMode::AbsoluteY => Operand::Memory(im16() + u16::from(self.reg.Y)),
+            AddressingMode::Indirect => Operand::Memory(u16::from(self.bus.load(im16()))),
             AddressingMode::IndirectX => {
-                Operand::Memory(self.bus.load_w((im8() + self.reg.X) as u16))
+                Operand::Memory(self.bus.load_w(u16::from(im8() + self.reg.X)))
             }
             AddressingMode::IndirectY => {
-                Operand::Memory(self.bus.load_w(im8() as u16) + self.reg.Y as u16)
+                Operand::Memory(self.bus.load_w(u16::from(im8())) + u16::from(self.reg.Y))
             }
             AddressingMode::Relative => Operand::Immediate(im8()),
         }

@@ -68,8 +68,9 @@ impl<'a> Bus<'a> {
     }
 
     pub fn load_w(&self, addr: u16) -> u16 {
-        self.load(addr) as u16 | ((self.load(addr + 1) as u16) << 8)
+        u16::from(self.load(addr)) | (u16::from(self.load(addr + 1)) << 8)
     }
+
     pub fn store_w(&mut self, addr: u16, val: u16) {
         self.store(addr, (val & 0xff) as u8);
         self.store(addr + 1, (val >> 8) as u8);

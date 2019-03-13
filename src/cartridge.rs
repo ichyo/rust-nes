@@ -36,9 +36,6 @@ impl Cartridge {
         let _ = read_bytes(&mut it, 10)?;
         let prg_rom = read_bytes(&mut it, prg_rom_pages * PRG_ROM_PAGE_UNIT)?;
         let chr_rom = read_bytes(&mut it, chr_rom_pages * CHR_ROM_PAGE_UNIT)?;
-        Ok(Cartridge {
-            prg_rom: prg_rom,
-            chr_rom: chr_rom,
-        })
+        Ok(Cartridge { prg_rom, chr_rom })
     }
 }

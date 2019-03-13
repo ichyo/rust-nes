@@ -14,3 +14,9 @@ impl Memory {
         self.0[addr as usize] = val;
     }
 }
+
+impl Default for Memory {
+    fn default() -> Memory {
+        Memory::new()
+    }
+}

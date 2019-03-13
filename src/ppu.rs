@@ -64,7 +64,7 @@ impl Ppu {
         } else if addr == 0x05 {
         } else if addr == 0x06 {
             if self.last_store.0 == 0x06 {
-                self.vram_addr = ((self.last_store.1 as u16) << 8) | val as u16;
+                self.vram_addr = (u16::from(self.last_store.1) << 8) | u16::from(val);
             }
         } else if addr == 0x07 {
             let vaddr = self.vram_addr;

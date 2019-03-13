@@ -1,5 +1,6 @@
 use log::{log, trace};
 
+#[derive(Default)]
 pub struct Apu {}
 
 impl Apu {

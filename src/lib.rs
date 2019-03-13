@@ -1,3 +1,5 @@
+#![deny(clippy::all)]
+#![allow(clippy::if_same_then_else)] // needs this until ppu is implemented
 pub mod apu;
 pub mod cartridge;
 pub mod cpu;
