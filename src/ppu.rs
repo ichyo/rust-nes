@@ -38,7 +38,7 @@ impl Ppu {
                 self.reg_mask
             }
             0x02...0x07 => 0,
-            _ => panic!("Unknown address {}", addr),
+            0x08...0xffff => panic!("Unknown address {}", addr),
         }
     }
 
@@ -65,7 +65,7 @@ impl Ppu {
                 self.store_vram(vaddr, val);
                 self.vram_addr += self.get_addr_incr();
             }
-            _ => panic!("Unknown address {}", addr),
+            0x08...0xffff => panic!("Unknown address {}", addr),
         };
         self.last_store = (addr, val);
     }
@@ -84,7 +84,7 @@ impl Ppu {
             0x0000...0x1fff => self.pattern_table[addr as usize],
             0x2000...0x2fff => self.name_table[(addr - 0x2000) as usize],
             0x3000...0x3fff => self.name_table[(addr - 0x3000) as usize],
-            _ => self.palette_table[(addr & 0x1f) as usize],
+            0x4000...0xffff => self.palette_table[(addr & 0x1f) as usize],
         }
     }
 
@@ -94,7 +94,7 @@ impl Ppu {
             0x0000...0x1fff => error!("it doesn't support to write to pattern table"),
             0x2000...0x2fff => self.name_table[(addr - 0x2000) as usize] = val,
             0x3000...0x3fff => self.name_table[(addr - 0x3000) as usize] = val,
-            _ => self.palette_table[(addr & 0x1f) as usize] = val,
+            0x4000...0xffff => self.palette_table[(addr & 0x1f) as usize] = val,
         }
     }
 }

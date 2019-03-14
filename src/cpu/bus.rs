@@ -27,44 +27,36 @@ impl<'a> Bus<'a> {
     }
 
     pub fn load(&self, addr: u16) -> u8 {
-        if addr < 0x2000 {
-            self.wram.load(addr & 0x7ff) // TODO: correct for mirror mode?
-        } else if addr < 0x4000 {
-            self.ppu.load((addr - 0x2000) & 0x7)
-        } else if addr < 0x4020 {
-            if addr == 0x4016 || addr == 0x4017 {
-                // TODO: implement key pad
-                0
-            } else {
-                self.apu.load(addr - 0x4000)
+        match addr {
+            0x0000...0x1fff => self.wram.load(addr & 0x07ff), // TODO: correct for mirror mode?
+            0x2000...0x3fff => self.ppu.load((addr - 0x2000) & 0x7),
+            0x4000...0x4015 | 0x4018...0x401f => self.apu.load(addr - 0x4000),
+            0x4016 | 0x4017 => 0, // TODO: implement key pad
+            0x4020...0x7fff => {
+                error!("It's not implemented to load {:#x}", addr);
+                unreachable!()
             }
-        } else if addr < 0x8000 {
-            error!("It's not implemented to load {:#x}", addr);
-            unreachable!()
-        } else {
-            let addr = (addr - 0x8000) as usize;
-            self.cartridge.prg_rom[addr]
+            0x8000...0xffff => {
+                let addr = (addr - 0x8000) as usize;
+                self.cartridge.prg_rom[addr]
+            }
         }
     }
 
     pub fn store(&mut self, addr: u16, val: u8) {
-        if addr < 0x2000 {
-            self.wram.store(addr & 0x7ff, val) // TODO: correct for mirror mode?
-        } else if addr < 0x4000 {
-            self.ppu.store((addr - 0x2000) & 0x7, val);
-        } else if addr < 0x4020 {
-            if addr == 0x4016 || addr == 0x4017 {
-                // TODO: implement key pad
-            } else {
-                self.apu.store(addr - 0x4000, val)
+        match addr {
+            0x0000...0x1fff => self.wram.store(addr & 0x7ff, val), // TODO: correct for mirror mode?
+            0x2000...0x3fff => self.ppu.store((addr - 0x2000) & 0x7, val),
+            0x4000...0x4015 | 0x4018...0x401f => self.apu.store(addr - 0x4000, val),
+            0x4016 | 0x4017 => {} // TODO: implement key pad
+            0x4020...0xffff => {
+                eprintln!(
+                    "error: not implemented to set {:#x} at address {:#x}",
+                    val, addr
+                );
+                unreachable!()
             }
-        } else {
-            eprintln!(
-                "error: not implemented to set {:#x} at address {:#x}",
-                val, addr
-            );
-            unreachable!()
-        }
+        };
     }
 
     pub fn load_w(&self, addr: u16) -> u16 {
