@@ -1,5 +1,3 @@
-use std::error::Error;
-
 const PRG_ROM_PAGE_UNIT: usize = 16 * 1024;
 const CHR_ROM_PAGE_UNIT: usize = 8 * 1024;
 
