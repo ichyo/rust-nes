@@ -28,49 +28,45 @@ impl Ppu {
 
     pub fn load(&self, addr: u16) -> u8 {
         eprintln!("[Ppu] load addr={:#x}", addr);
-        if addr == 0x00 {
-            eprintln!("Warning: doesn't support load control register (0x00)");
-            self.reg_ctrl
-        } else if addr == 0x01 {
-            eprintln!("Warning: doesn't support load mask register (0x01)");
-            self.reg_mask
-        } else if addr == 0x02 {
-            0
-        } else if addr == 0x03 {
-            0
-        } else if addr == 0x04 {
-            0
-        } else if addr == 0x05 {
-            0
-        } else if addr == 0x06 {
-            0
-        } else if addr == 0x07 {
-            0
-        } else {
-            panic!("Unknown address {}", addr);
+        match addr {
+            0x00 => {
+                eprintln!("Warning: doesn't support load control register (0x00)");
+                self.reg_ctrl
+            }
+            0x01 => {
+                eprintln!("Warning: doesn't support load mask register (0x01)");
+                self.reg_mask
+            }
+            0x02...0x07 => 0,
+            _ => panic!("Unknown address {}", addr),
         }
     }
 
     pub fn store(&mut self, addr: u16, val: u8) {
         trace!("Store addr={:#x} val={:#x}", addr, val);
-        if addr == 0x00 {
-            self.reg_ctrl = val;
-        } else if addr == 0x01 {
-            self.reg_mask = val;
-        } else if addr == 0x02 {
-            warn!("It doesn't support write to status register");
-        } else if addr == 0x03 {
-        } else if addr == 0x04 {
-        } else if addr == 0x05 {
-        } else if addr == 0x06 {
-            if self.last_store.0 == 0x06 {
-                self.vram_addr = (u16::from(self.last_store.1) << 8) | u16::from(val);
+        match addr {
+            0x00 => {
+                self.reg_ctrl = val;
             }
-        } else if addr == 0x07 {
-            let vaddr = self.vram_addr;
-            self.store_vram(vaddr, val);
-            self.vram_addr += self.get_addr_incr();
-        }
+            0x01 => {
+                self.reg_mask = val;
+            }
+            0x02 => {
+                warn!("It doesn't support write to status register");
+            }
+            0x03...0x05 => {}
+            0x06 => {
+                if self.last_store.0 == 0x06 {
+                    self.vram_addr = (u16::from(self.last_store.1) << 8) | u16::from(val);
+                }
+            }
+            0x07 => {
+                let vaddr = self.vram_addr;
+                self.store_vram(vaddr, val);
+                self.vram_addr += self.get_addr_incr();
+            }
+            _ => panic!("Unknown address {}", addr),
+        };
         self.last_store = (addr, val);
     }
 
@@ -84,27 +80,21 @@ impl Ppu {
 
     fn load_vram(&self, addr: u16) -> u8 {
         trace!("Load(vram) addr={:#x}", addr);
-        if addr < 0x2000 {
-            self.pattern_table[addr as usize]
-        } else if addr < 0x3000 {
-            self.name_table[(addr - 0x2000) as usize]
-        } else if addr < 0x4000 {
-            self.name_table[(addr - 0x3000) as usize]
-        } else {
-            self.palette_table[(addr & 0x1f) as usize]
+        match addr {
+            0x0000...0x1fff => self.pattern_table[addr as usize],
+            0x2000...0x2fff => self.name_table[(addr - 0x2000) as usize],
+            0x3000...0x3fff => self.name_table[(addr - 0x3000) as usize],
+            _ => self.palette_table[(addr & 0x1f) as usize],
         }
     }
 
     fn store_vram(&mut self, addr: u16, val: u8) {
         trace!("Store(vram) addr = {:#x} val = {:#x}", addr, val);
-        if addr < 0x2000 {
-            error!("it doesn't support to write to pattern table");
-        } else if addr < 0x3000 {
-            self.name_table[(addr - 0x2000) as usize] = val;
-        } else if addr < 0x4000 {
-            self.name_table[(addr - 0x3000) as usize] = val;
-        } else {
-            self.palette_table[(addr & 0x1f) as usize] = val;
+        match addr {
+            0x0000...0x1fff => error!("it doesn't support to write to pattern table"),
+            0x2000...0x2fff => self.name_table[(addr - 0x2000) as usize] = val,
+            0x3000...0x3fff => self.name_table[(addr - 0x3000) as usize] = val,
+            _ => self.palette_table[(addr & 0x1f) as usize] = val,
         }
     }
 }
