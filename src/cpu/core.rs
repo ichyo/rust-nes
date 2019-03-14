@@ -46,7 +46,7 @@ impl<'a> Cpu<'a> {
         self.reg.set_negative_flag((val & 0x80) != 0);
     }
 
-    fn load_inst(&self, addr: Operand) -> u8 {
+    fn load_inst(&mut self, addr: Operand) -> u8 {
         match addr {
             Operand::None => unreachable!(),
             Operand::Immediate(val) => val,
@@ -113,34 +113,67 @@ impl<'a> Cpu<'a> {
     }
 
     fn fetch_operand(&mut self, mode: AddressingMode) -> Operand {
-        self.reg.PC += match mode {
-            AddressingMode::Implied | AddressingMode::Accumulator => 0,
-            AddressingMode::Absolute
-            | AddressingMode::AbsoluteX
-            | AddressingMode::AbsoluteY
-            | AddressingMode::Indirect => 2,
-            _ => 1,
-        };
-        let im8 = || self.bus.load(self.reg.PC - 1);
-        let im16 = || self.bus.load_w(self.reg.PC - 2);
         match mode {
             AddressingMode::Implied => Operand::None,
             AddressingMode::Accumulator => Operand::Accumulator,
-            AddressingMode::Immediate => Operand::Immediate(im8()),
-            AddressingMode::ZeroPage => Operand::Memory(u16::from(im8())),
-            AddressingMode::ZeroPageX => Operand::Memory(u16::from(im8() + self.reg.X)),
-            AddressingMode::ZeroPageY => Operand::Memory(u16::from(im8() + self.reg.Y)),
-            AddressingMode::Absolute => Operand::Memory(im16()),
-            AddressingMode::AbsoluteX => Operand::Memory(im16() + u16::from(self.reg.X)),
-            AddressingMode::AbsoluteY => Operand::Memory(im16() + u16::from(self.reg.Y)),
-            AddressingMode::Indirect => Operand::Memory(u16::from(self.bus.load(im16()))),
+            AddressingMode::Immediate => {
+                let value = self.bus.load(self.reg.PC);
+                self.reg.PC += 1;
+                Operand::Immediate(value)
+            }
+            AddressingMode::ZeroPage => {
+                let value = self.bus.load(self.reg.PC);
+                self.reg.PC += 1;
+                Operand::Memory(u16::from(value))
+            }
+            AddressingMode::ZeroPageX => {
+                let value = self.bus.load(self.reg.PC);
+                self.reg.PC += 1;
+                Operand::Memory(u16::from(value + self.reg.X))
+            }
+            AddressingMode::ZeroPageY => {
+                let value = self.bus.load(self.reg.PC);
+                self.reg.PC += 1;
+                Operand::Memory(u16::from(value + self.reg.Y))
+            }
+            AddressingMode::Absolute => {
+                let value = self.bus.load_w(self.reg.PC);
+                self.reg.PC += 2;
+                Operand::Memory(value)
+            }
+            AddressingMode::AbsoluteX => {
+                let value = self.bus.load_w(self.reg.PC);
+                self.reg.PC += 2;
+                Operand::Memory(value + u16::from(self.reg.X))
+            }
+            AddressingMode::AbsoluteY => {
+                let value = self.bus.load_w(self.reg.PC);
+                self.reg.PC += 2;
+                Operand::Memory(value + u16::from(self.reg.Y))
+            }
+            AddressingMode::Indirect => {
+                let addr = self.bus.load_w(self.reg.PC);
+                self.reg.PC += 2;
+                let value = self.bus.load(addr);
+                Operand::Memory(u16::from(value))
+            }
             AddressingMode::IndirectX => {
-                Operand::Memory(self.bus.load_w(u16::from(im8() + self.reg.X)))
+                let addr = self.bus.load(self.reg.PC) + self.reg.X;
+                self.reg.PC += 1;
+                let value = self.bus.load_w(u16::from(addr));
+                Operand::Memory(value)
             }
             AddressingMode::IndirectY => {
-                Operand::Memory(self.bus.load_w(u16::from(im8())) + u16::from(self.reg.Y))
+                let addr = self.bus.load(self.reg.PC);
+                self.reg.PC += 1;
+                let value = self.bus.load_w(u16::from(addr)) + u16::from(self.reg.Y);
+                Operand::Memory(value)
             }
-            AddressingMode::Relative => Operand::Immediate(im8()),
+            AddressingMode::Relative => {
+                let value = self.bus.load(self.reg.PC);
+                self.reg.PC += 1;
+                Operand::Immediate(value)
+            }
         }
     }
 

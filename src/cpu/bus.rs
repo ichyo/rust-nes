@@ -26,7 +26,7 @@ impl<'a> Bus<'a> {
         }
     }
 
-    pub fn load(&self, addr: u16) -> u8 {
+    pub fn load(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000...0x1fff => self.wram.load(addr & 0x07ff), // TODO: correct for mirror mode?
             0x2000...0x3fff => self.ppu.load((addr - 0x2000) & 0x7),
@@ -59,7 +59,7 @@ impl<'a> Bus<'a> {
         };
     }
 
-    pub fn load_w(&self, addr: u16) -> u16 {
+    pub fn load_w(&mut self, addr: u16) -> u16 {
         u16::from(self.load(addr)) | (u16::from(self.load(addr + 1)) << 8)
     }
 
