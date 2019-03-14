@@ -42,7 +42,7 @@ fn main() {
 
     f.read_to_end(&mut buffer).expect("failed to read a file");
 
-    let cartridge = Cartridge::parse(&buffer).expect("invalid nes format");
+    let cartridge = Cartridge::parse_file(&buffer).expect("invalid nes format");
     let chr = cartridge.chr_rom;
 
     let chr_size = chr.len() / 0x10;

@@ -20,7 +20,7 @@ fn main() {
     let mut f = File::open(path).expect("failed to open file");
     let mut buffer = Vec::new();
     f.read_to_end(&mut buffer).expect("failed to read a file");
-    let cartridge = Cartridge::parse(&buffer).expect("invalid nes format");
+    let cartridge = Cartridge::parse_file(&buffer).expect("invalid nes format");
     let mut wram = Memory::new();
     let mut apu = Apu::new();
     let mut ppu = Ppu::new(&cartridge.chr_rom);
