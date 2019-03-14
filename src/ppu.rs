@@ -26,7 +26,7 @@ impl Ppu {
         }
     }
 
-    pub fn load(&self, addr: u16) -> u8 {
+    pub fn load(&mut self, addr: u16) -> u8 {
         eprintln!("[Ppu] load addr={:#x}", addr);
         match addr {
             0x00 => {
@@ -37,7 +37,12 @@ impl Ppu {
                 eprintln!("Warning: doesn't support load mask register (0x01)");
                 self.reg_mask
             }
-            0x02...0x07 => 0,
+            0x02...0x06 => 0,
+            0x07 => {
+                let result = self.load_vram(self.vram_addr);
+                self.vram_addr += self.get_addr_incr();
+                result
+            }
             0x08...0xffff => panic!("Unknown address {}", addr),
         }
     }
@@ -55,14 +60,12 @@ impl Ppu {
                 warn!("It doesn't support write to status register");
             }
             0x03...0x05 => {}
-            0x06 => {
-                if self.last_store.0 == 0x06 {
-                    self.vram_addr = (u16::from(self.last_store.1) << 8) | u16::from(val);
-                }
+            0x06 if self.last_store.0 == 0x06 => {
+                self.vram_addr = (u16::from(self.last_store.1) << 8) | u16::from(val);
             }
+            0x06 => {} // TODO: unexpected?
             0x07 => {
-                let vaddr = self.vram_addr;
-                self.store_vram(vaddr, val);
+                self.store_vram(self.vram_addr, val);
                 self.vram_addr += self.get_addr_incr();
             }
             0x08...0xffff => panic!("Unknown address {}", addr),
@@ -71,10 +74,9 @@ impl Ppu {
     }
 
     fn get_addr_incr(&self) -> u16 {
-        if self.reg_ctrl & 0x4 != 0 {
-            32
-        } else {
-            1
+        match self.reg_ctrl & 0x4 {
+            0 => 1,
+            _ => 32,
         }
     }
 
@@ -83,8 +85,9 @@ impl Ppu {
         match addr {
             0x0000...0x1fff => self.pattern_table[addr as usize],
             0x2000...0x2fff => self.name_table[(addr - 0x2000) as usize],
-            0x3000...0x3fff => self.name_table[(addr - 0x3000) as usize],
-            0x4000...0xffff => self.palette_table[(addr & 0x1f) as usize],
+            0x3000...0x3eff => self.name_table[(addr - 0x3000) as usize],
+            0x3f00...0x3fff => self.palette_table[(addr & 0x1f) as usize],
+            0x4000...0xffff => unreachable!(),
         }
     }
 
@@ -93,8 +96,9 @@ impl Ppu {
         match addr {
             0x0000...0x1fff => error!("it doesn't support to write to pattern table"),
             0x2000...0x2fff => self.name_table[(addr - 0x2000) as usize] = val,
-            0x3000...0x3fff => self.name_table[(addr - 0x3000) as usize] = val,
-            0x4000...0xffff => self.palette_table[(addr & 0x1f) as usize] = val,
+            0x3000...0x3eff => self.name_table[(addr - 0x3000) as usize] = val,
+            0x3f00...0x3fff => self.palette_table[(addr & 0x1f) as usize] = val,
+            0x4000...0xffff => unreachable!(),
         }
     }
 }
