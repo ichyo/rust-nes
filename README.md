@@ -7,3 +7,4 @@ NES emulator written in rust
 - https://github.com/starrhorne/nes-rust
 - https://github.com/bheisler/Corrosion
 - https://github.com/koute/pinky
+- https://github.com/bokuweb/rustynes
