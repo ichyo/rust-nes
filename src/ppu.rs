@@ -12,7 +12,7 @@ pub struct Ppu {
 
 impl Ppu {
     pub fn new(chr_rom: &[u8]) -> Ppu {
-        assert!(chr_rom.len() == 0x2000);
+        assert_eq!(chr_rom.len(), 0x2000);
         let mut pattern_table = [0; 0x2000];
         pattern_table.clone_from_slice(chr_rom);
         Ppu {

@@ -28,7 +28,7 @@ impl<'a> Cpu<'a> {
 impl<'a> Cpu<'a> {
     // Fetches and executes instruction and returns the number of clocks
     pub fn exec(&mut self) -> u8 {
-        let inst = self.fetch_instrucion();
+        let inst = self.fetch_instruction();
         let addr = self.fetch_operand(inst.mode);
         trace!("Execute inst={:?} addr={:?}", inst, addr);
         self.execute_instruction(inst.opcode, addr);
@@ -106,7 +106,7 @@ impl<'a> Cpu<'a> {
         u16::from(low) | (u16::from(high) << 8)
     }
 
-    fn fetch_instrucion(&mut self) -> Instruction {
+    fn fetch_instruction(&mut self) -> Instruction {
         let code = self.bus.load(self.reg.PC);
         self.reg.PC += 1;
         lookup_instruction(code)
