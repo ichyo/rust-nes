@@ -1,7 +1,3 @@
-extern crate env_logger;
-extern crate log;
-extern crate nes;
-
 use nes::apu::Apu;
 use nes::cartridge::Cartridge;
 use nes::cpu::{Bus, Cpu};

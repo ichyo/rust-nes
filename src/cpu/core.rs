@@ -1,6 +1,7 @@
 use super::bus::Bus;
 use super::instructions::{lookup_instruction, AddressingMode, Instruction, Opcode};
 use super::register::Register;
+use crate::ppu::Rgb;
 use log::trace;
 
 #[derive(Debug, Copy, Clone)]
@@ -36,6 +37,11 @@ impl<'a> Cpu<'a> {
         inst.cycles
     }
 
+    // TODO: remove and redesign it.
+    pub fn render(&self) -> Vec<Rgb> {
+        self.bus.render()
+    }
+
     pub fn reset(&mut self) {
         self.reg = Register::new();
         self.reg.PC = self.bus.load_w(0xfffc);
@@ -67,7 +73,7 @@ impl<'a> Cpu<'a> {
     fn jump_inst(&mut self, addr: Operand) {
         match addr {
             Operand::Immediate(val) => {
-                let pc = i32::from(self.reg.PC) + i32::from(val);
+                let pc = i32::from(self.reg.PC) + i32::from(val as i8);
                 self.jump(pc as u16);
             }
             Operand::Memory(addr) => self.jump(addr),

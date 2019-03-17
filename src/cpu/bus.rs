@@ -2,6 +2,7 @@ use crate::apu::Apu;
 use crate::cartridge::Cartridge;
 use crate::memory::Memory;
 use crate::ppu::Ppu;
+use crate::ppu::Rgb;
 use log::error;
 
 pub struct Bus<'a> {
@@ -24,6 +25,12 @@ impl<'a> Bus<'a> {
             ppu,
             apu,
         }
+    }
+
+    // TODO: this is defined for testing.
+    // TODO: remove and design it to avoid this expose.
+    pub fn render(&self) -> Vec<Rgb> {
+        self.ppu.render()
     }
 
     pub fn load(&mut self, addr: u16) -> u8 {

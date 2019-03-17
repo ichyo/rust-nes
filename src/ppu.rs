@@ -11,11 +11,11 @@ pub struct Ppu {
     palette_table: [u8; 0x20],
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Rgb {
-    r: u8,
-    g: u8,
-    b: u8,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
 }
 
 impl Rgb {
@@ -142,7 +142,7 @@ impl Ppu {
 
                 let sprite = Sprite::parse(&self.pattern_table, pattern_index);
                 let sprite_value = sprite.get(x % 8, y % 8);
-                let palette_value = self.pattern_table[(palette_index * 4 + sprite_value) as usize];
+                let palette_value = self.palette_table[(palette_index * 4 + sprite_value) as usize];
 
                 let rgb = COLORS[palette_value as usize];
                 res.push(rgb);
