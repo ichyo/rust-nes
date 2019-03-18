@@ -1,7 +1,6 @@
-use super::bus::Bus;
-use super::instructions::{lookup_instruction, AddressingMode, Instruction, Opcode};
+use super::instructions::{AddressingMode, Instruction, Opcode};
 use super::register::Register;
-use crate::ppu::Rgb;
+use crate::bus::Bus;
 use log::trace;
 
 #[derive(Debug, Copy, Clone)]
@@ -12,39 +11,33 @@ enum Operand {
     Memory(u16),
 }
 
-pub struct Cpu<'a> {
-    pub reg: Register,
-    bus: Bus<'a>,
+#[derive(Default)]
+pub struct Cpu {
+    reg: Register,
 }
 
-impl<'a> Cpu<'a> {
-    pub fn new(bus: Bus<'a>) -> Self {
+impl Cpu {
+    pub fn new() -> Self {
         Cpu {
             reg: Register::new(),
-            bus,
         }
     }
 }
 
-impl<'a> Cpu<'a> {
+impl Cpu {
     // Fetches and executes instruction and returns the number of clocks
-    pub fn exec(&mut self) -> u8 {
-        let inst = self.fetch_instruction();
-        let addr = self.fetch_operand(inst.mode);
+    pub fn exec(&mut self, bus: &mut Bus) -> u8 {
+        let inst = self.fetch_instruction(bus);
+        let addr = self.fetch_operand(bus, inst.mode);
         trace!("Execute inst={:?} addr={:?}", inst, addr);
-        self.execute_instruction(inst.opcode, addr);
+        self.execute_instruction(bus, inst.opcode, addr);
         trace!("Changed to {:?}", self.reg);
         inst.cycles
     }
 
-    // TODO: remove and redesign it.
-    pub fn render(&self) -> Vec<Rgb> {
-        self.bus.render()
-    }
-
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, bus: &mut Bus) {
         self.reg = Register::new();
-        self.reg.PC = self.bus.load_w(0xfffc);
+        self.reg.PC = bus.load_w(0xfffc);
     }
 
     fn set_zero_and_negative_flags(&mut self, val: u8) {
@@ -52,21 +45,21 @@ impl<'a> Cpu<'a> {
         self.reg.set_negative_flag((val & 0x80) != 0);
     }
 
-    fn load_inst(&mut self, addr: Operand) -> u8 {
+    fn load_inst(&mut self, bus: &mut Bus, addr: Operand) -> u8 {
         match addr {
             Operand::None => unreachable!(),
             Operand::Immediate(val) => val,
             Operand::Accumulator => self.reg.A,
-            Operand::Memory(addr) => self.bus.load(addr),
+            Operand::Memory(addr) => bus.load(addr),
         }
     }
 
-    fn write_inst(&mut self, addr: Operand, val: u8) {
+    fn write_inst(&mut self, bus: &mut Bus, addr: Operand, val: u8) {
         match addr {
             Operand::None => unreachable!(),
             Operand::Immediate(_) => unreachable!(),
             Operand::Accumulator => self.reg.A = val,
-            Operand::Memory(addr) => self.bus.store(addr, val),
+            Operand::Memory(addr) => bus.store(addr, val),
         }
     }
 
@@ -91,126 +84,126 @@ impl<'a> Cpu<'a> {
         self.reg.PC = addr;
     }
 
-    fn push_stack(&mut self, val: u8) {
+    fn push_stack(&mut self, bus: &mut Bus, val: u8) {
         self.reg.S -= 1;
-        self.bus.store(u16::from(self.reg.S + 1) + 0x100, val);
+        bus.store(u16::from(self.reg.S + 1) + 0x100, val);
     }
 
-    fn push_stack_w(&mut self, val: u16) {
-        self.push_stack((val & 0xff) as u8);
-        self.push_stack((val >> 8) as u8);
+    fn push_stack_w(&mut self, bus: &mut Bus, val: u16) {
+        self.push_stack(bus, (val & 0xff) as u8);
+        self.push_stack(bus, (val >> 8) as u8);
     }
 
-    fn pop_stack(&mut self) -> u8 {
+    fn pop_stack(&mut self, bus: &mut Bus) -> u8 {
         self.reg.S += 1;
-        self.bus.load(u16::from(self.reg.S) + 0x100)
+        bus.load(u16::from(self.reg.S) + 0x100)
     }
 
-    fn pop_stack_w(&mut self) -> u16 {
-        let high = self.pop_stack();
-        let low = self.pop_stack();
+    fn pop_stack_w(&mut self, bus: &mut Bus) -> u16 {
+        let high = self.pop_stack(bus);
+        let low = self.pop_stack(bus);
         u16::from(low) | (u16::from(high) << 8)
     }
 
-    fn fetch_instruction(&mut self) -> Instruction {
-        let code = self.bus.load(self.reg.PC);
+    fn fetch_instruction(&mut self, bus: &mut Bus) -> Instruction {
+        let code = bus.load(self.reg.PC);
         self.reg.PC += 1;
-        lookup_instruction(code)
+        Instruction::from_code(code)
     }
 
-    fn fetch_operand(&mut self, mode: AddressingMode) -> Operand {
+    fn fetch_operand(&mut self, bus: &mut Bus, mode: AddressingMode) -> Operand {
         match mode {
             AddressingMode::Implied => Operand::None,
             AddressingMode::Accumulator => Operand::Accumulator,
             AddressingMode::Immediate => {
-                let value = self.bus.load(self.reg.PC);
+                let value = bus.load(self.reg.PC);
                 self.reg.PC += 1;
                 Operand::Immediate(value)
             }
             AddressingMode::ZeroPage => {
-                let value = self.bus.load(self.reg.PC);
+                let value = bus.load(self.reg.PC);
                 self.reg.PC += 1;
                 Operand::Memory(u16::from(value))
             }
             AddressingMode::ZeroPageX => {
-                let value = self.bus.load(self.reg.PC);
+                let value = bus.load(self.reg.PC);
                 self.reg.PC += 1;
                 Operand::Memory(u16::from(value + self.reg.X))
             }
             AddressingMode::ZeroPageY => {
-                let value = self.bus.load(self.reg.PC);
+                let value = bus.load(self.reg.PC);
                 self.reg.PC += 1;
                 Operand::Memory(u16::from(value + self.reg.Y))
             }
             AddressingMode::Absolute => {
-                let value = self.bus.load_w(self.reg.PC);
+                let value = bus.load_w(self.reg.PC);
                 self.reg.PC += 2;
                 Operand::Memory(value)
             }
             AddressingMode::AbsoluteX => {
-                let value = self.bus.load_w(self.reg.PC);
+                let value = bus.load_w(self.reg.PC);
                 self.reg.PC += 2;
                 Operand::Memory(value + u16::from(self.reg.X))
             }
             AddressingMode::AbsoluteY => {
-                let value = self.bus.load_w(self.reg.PC);
+                let value = bus.load_w(self.reg.PC);
                 self.reg.PC += 2;
                 Operand::Memory(value + u16::from(self.reg.Y))
             }
             AddressingMode::Indirect => {
-                let addr = self.bus.load_w(self.reg.PC);
+                let addr = bus.load_w(self.reg.PC);
                 self.reg.PC += 2;
-                let value = self.bus.load(addr);
+                let value = bus.load(addr);
                 Operand::Memory(u16::from(value))
             }
             AddressingMode::IndirectX => {
-                let addr = self.bus.load(self.reg.PC) + self.reg.X;
+                let addr = bus.load(self.reg.PC) + self.reg.X;
                 self.reg.PC += 1;
-                let value = self.bus.load_w(u16::from(addr));
+                let value = bus.load_w(u16::from(addr));
                 Operand::Memory(value)
             }
             AddressingMode::IndirectY => {
-                let addr = self.bus.load(self.reg.PC);
+                let addr = bus.load(self.reg.PC);
                 self.reg.PC += 1;
-                let value = self.bus.load_w(u16::from(addr)) + u16::from(self.reg.Y);
+                let value = bus.load_w(u16::from(addr)) + u16::from(self.reg.Y);
                 Operand::Memory(value)
             }
             AddressingMode::Relative => {
-                let value = self.bus.load(self.reg.PC);
+                let value = bus.load(self.reg.PC);
                 self.reg.PC += 1;
                 Operand::Immediate(value)
             }
         }
     }
 
-    fn execute_instruction(&mut self, op: Opcode, addr: Operand) {
+    fn execute_instruction(&mut self, bus: &mut Bus, op: Opcode, addr: Operand) {
         match op {
             Opcode::LDA => {
-                let val = self.load_inst(addr);
+                let val = self.load_inst(bus, addr);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::LDX => {
-                let val = self.load_inst(addr);
+                let val = self.load_inst(bus, addr);
                 self.reg.X = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::LDY => {
-                let val = self.load_inst(addr);
+                let val = self.load_inst(bus, addr);
                 self.reg.Y = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::STA => {
                 let a = self.reg.A;
-                self.write_inst(addr, a);
+                self.write_inst(bus, addr, a);
             }
             Opcode::STX => {
                 let x = self.reg.X;
-                self.write_inst(addr, x);
+                self.write_inst(bus, addr, x);
             }
             Opcode::STY => {
                 let y = self.reg.Y;
-                self.write_inst(addr, y);
+                self.write_inst(bus, addr, y);
             }
             Opcode::TAX => {
                 let val = self.reg.A;
@@ -244,72 +237,73 @@ impl<'a> Cpu<'a> {
             }
             Opcode::PHA => {
                 let val = self.reg.A;
-                self.push_stack(val);
+                self.push_stack(bus, val);
             }
             Opcode::PHP => {
                 let val = self.reg.P;
-                self.push_stack(val);
+                self.push_stack(bus, val);
             }
             Opcode::PLA => {
-                let val = self.pop_stack();
+                let val = self.pop_stack(bus);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::PLP => {
-                let val = self.pop_stack();
+                let val = self.pop_stack(bus);
                 self.reg.P = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::AND => {
-                let val = self.reg.A & self.load_inst(addr);
+                let val = self.reg.A & self.load_inst(bus, addr);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::EOR => {
-                let val = self.reg.A ^ self.load_inst(addr);
+                let val = self.reg.A ^ self.load_inst(bus, addr);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::ORA => {
-                let val = self.reg.A | self.load_inst(addr);
+                let val = self.reg.A | self.load_inst(bus, addr);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::BIT => {
-                let val = self.reg.A | self.load_inst(addr);
+                let val = self.reg.A | self.load_inst(bus, addr);
                 self.reg.set_overflow_flag(val & 0x40 != 0);
                 self.reg.set_negative_flag(val & 0x80 != 0);
             }
             Opcode::ADC => {
                 // TODO: overflow and carry flag
-                let val = self.reg.A + self.load_inst(addr) + self.reg.carry_flag() as u8;
+                let val = self.reg.A + self.load_inst(bus, addr) + self.reg.carry_flag() as u8;
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::SBC => {
                 // TODO: overflow and carry flag
-                let val = self.reg.A - self.load_inst(addr) - (1 - self.reg.carry_flag() as u8);
+                let val =
+                    self.reg.A - self.load_inst(bus, addr) - (1 - self.reg.carry_flag() as u8);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::CMP => {
                 let a = self.reg.A;
-                let m = self.load_inst(addr);
+                let m = self.load_inst(bus, addr);
                 self.comp_inst(a, m);
             }
             Opcode::CPX => {
                 let x = self.reg.X;
-                let m = self.load_inst(addr);
+                let m = self.load_inst(bus, addr);
                 self.comp_inst(x, m);
             }
             Opcode::CPY => {
                 let y = self.reg.Y;
-                let m = self.load_inst(addr);
+                let m = self.load_inst(bus, addr);
                 self.comp_inst(y, m);
             }
             Opcode::INC => {
-                let val = self.load_inst(addr) + 1;
-                self.write_inst(addr, val);
+                let val = self.load_inst(bus, addr) + 1;
+                self.write_inst(bus, addr, val);
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::INX => {
@@ -323,8 +317,8 @@ impl<'a> Cpu<'a> {
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::DEC => {
-                let val = self.load_inst(addr) - 1;
-                self.write_inst(addr, val);
+                let val = self.load_inst(bus, addr) - 1;
+                self.write_inst(bus, addr, val);
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::DEX => {
@@ -338,43 +332,43 @@ impl<'a> Cpu<'a> {
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::ASL => {
-                let val = self.load_inst(addr);
+                let val = self.load_inst(bus, addr);
                 self.reg.set_carry_flag(val & 0x80 != 0);
                 self.reg.set_negative_flag(val & 0x40 != 0);
                 self.reg.set_zero_flag(val == 0);
-                self.write_inst(addr, (val & 0x7f) << 1);
+                self.write_inst(bus, addr, (val & 0x7f) << 1);
             }
             Opcode::LSR => {
-                let val = self.load_inst(addr);
+                let val = self.load_inst(bus, addr);
                 self.reg.set_carry_flag(val & 0x01 != 0);
                 self.reg.set_negative_flag(false);
                 self.reg.set_zero_flag(val == 0);
-                self.write_inst(addr, val >> 1);
+                self.write_inst(bus, addr, val >> 1);
             }
             Opcode::ROL => {
-                let val = self.load_inst(addr);
+                let val = self.load_inst(bus, addr);
                 self.reg.set_carry_flag(val & 0x80 != 0);
                 self.reg.set_negative_flag(val & 0x40 != 0);
                 self.reg.set_zero_flag(val == 0);
-                self.write_inst(addr, ((val & 0x7f) << 1) | ((val & 0x80) >> 7));
+                self.write_inst(bus, addr, ((val & 0x7f) << 1) | ((val & 0x80) >> 7));
             }
             Opcode::ROR => {
-                let val = self.load_inst(addr);
+                let val = self.load_inst(bus, addr);
                 self.reg.set_carry_flag(val & 0x01 != 0);
                 self.reg.set_negative_flag(val & 0x01 != 0);
                 self.reg.set_zero_flag(val == 0);
-                self.write_inst(addr, (val >> 1) | ((val & 0x01) << 7));
+                self.write_inst(bus, addr, (val >> 1) | ((val & 0x01) << 7));
             }
             Opcode::JMP => {
                 self.jump_inst(addr);
             }
             Opcode::JSR => {
                 let pc = self.reg.PC - 1;
-                self.push_stack_w(pc);
+                self.push_stack_w(bus, pc);
                 self.jump_inst(addr);
             }
             Opcode::RTS => {
-                let addr = self.pop_stack_w();
+                let addr = self.pop_stack_w(bus);
                 self.jump(addr + 1);
             }
             Opcode::BCC => {

@@ -1,3 +1,5 @@
+/// Define register model
+
 #[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct Register {

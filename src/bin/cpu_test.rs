@@ -1,6 +1,7 @@
 use nes::apu::Apu;
+use nes::bus::Bus;
 use nes::cartridge::Cartridge;
-use nes::cpu::{Bus, Cpu};
+use nes::cpu::Cpu;
 use nes::memory::Memory;
 use nes::ppu::Ppu;
 use std::env;
@@ -20,10 +21,10 @@ fn main() {
     let mut wram = Memory::new();
     let mut apu = Apu::new();
     let mut ppu = Ppu::new(&cartridge.chr_rom);
-    let bus = Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu);
-    let mut cpu = Cpu::new(bus);
-    cpu.reset();
+    let mut cpu = Cpu::new();
+    let mut bus = Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu);
+    cpu.reset(&mut bus);
     for _ in 0..1000 {
-        cpu.exec();
+        cpu.exec(&mut bus);
     }
 }

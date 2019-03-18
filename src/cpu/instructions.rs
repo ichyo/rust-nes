@@ -1,4 +1,96 @@
-pub fn lookup_instruction(code: u8) -> Instruction {
+/// Define instruction codes
+
+#[derive(Debug, Copy, Clone)]
+pub struct Instruction {
+    pub opcode: Opcode,
+    pub mode: AddressingMode,
+    pub cycles: u8,
+}
+
+impl Instruction {
+    pub fn from_code(code: u8) -> Instruction {
+        lookup_instruction(code)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum AddressingMode {
+    Implied,
+    Accumulator,
+    Immediate,
+    ZeroPage,
+    ZeroPageX,
+    ZeroPageY,
+    Absolute,
+    AbsoluteX,
+    AbsoluteY,
+    Indirect,
+    IndirectX, // Indexed Indirect
+    IndirectY, // Indirect Indexed
+    Relative,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Opcode {
+    ADC,
+    AND,
+    ASL,
+    BCC,
+    BCS,
+    BEQ,
+    BIT,
+    BMI,
+    BNE,
+    BPL,
+    BRK,
+    BVC,
+    BVS,
+    CLC,
+    CLD,
+    CLI,
+    CLV,
+    CMP,
+    CPX,
+    CPY,
+    DEC,
+    DEX,
+    DEY,
+    EOR,
+    INC,
+    INX,
+    INY,
+    JMP,
+    JSR,
+    LDA,
+    LDX,
+    LDY,
+    LSR,
+    NOP,
+    ORA,
+    PHA,
+    PHP,
+    PLA,
+    PLP,
+    ROL,
+    ROR,
+    RTI,
+    RTS,
+    SBC,
+    SEC,
+    SED,
+    SEI,
+    STA,
+    STX,
+    STY,
+    TAX,
+    TAY,
+    TSX,
+    TXA,
+    TXS,
+    TYA,
+}
+
+fn lookup_instruction(code: u8) -> Instruction {
     match code {
         0x00 => Instruction {
             opcode: Opcode::BRK,
@@ -757,88 +849,4 @@ pub fn lookup_instruction(code: u8) -> Instruction {
         },
         _ => panic!("invalid instruction code {}", code),
     }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct Instruction {
-    pub opcode: Opcode,
-    pub mode: AddressingMode,
-    pub cycles: u8,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum AddressingMode {
-    Implied,
-    Accumulator,
-    Immediate,
-    ZeroPage,
-    ZeroPageX,
-    ZeroPageY,
-    Absolute,
-    AbsoluteX,
-    AbsoluteY,
-    Indirect,
-    IndirectX, // Indexed Indirect
-    IndirectY, // Indirect Indexed
-    Relative,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum Opcode {
-    ADC,
-    AND,
-    ASL,
-    BCC,
-    BCS,
-    BEQ,
-    BIT,
-    BMI,
-    BNE,
-    BPL,
-    BRK,
-    BVC,
-    BVS,
-    CLC,
-    CLD,
-    CLI,
-    CLV,
-    CMP,
-    CPX,
-    CPY,
-    DEC,
-    DEX,
-    DEY,
-    EOR,
-    INC,
-    INX,
-    INY,
-    JMP,
-    JSR,
-    LDA,
-    LDX,
-    LDY,
-    LSR,
-    NOP,
-    ORA,
-    PHA,
-    PHP,
-    PLA,
-    PLP,
-    ROL,
-    ROR,
-    RTI,
-    RTS,
-    SBC,
-    SEC,
-    SED,
-    SEI,
-    STA,
-    STX,
-    STY,
-    TAX,
-    TAY,
-    TSX,
-    TXA,
-    TXS,
-    TYA,
 }

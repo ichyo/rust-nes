@@ -27,26 +27,14 @@ impl<'a> Bus<'a> {
         }
     }
 
-    // TODO: this is defined for testing.
-    // TODO: remove and design it to avoid this expose.
-    pub fn render(&self) -> Vec<Rgb> {
-        self.ppu.render()
-    }
-
     pub fn load(&mut self, addr: u16) -> u8 {
         match addr {
-            0x0000...0x1fff => self.wram.load(addr & 0x07ff), // TODO: correct for mirror mode?
+            0x0000...0x1fff => self.wram.load(addr & 0x07ff),
             0x2000...0x3fff => self.ppu.load((addr - 0x2000) & 0x7),
             0x4000...0x4015 | 0x4018...0x401f => self.apu.load(addr - 0x4000),
             0x4016 | 0x4017 => 0, // TODO: implement key pad
-            0x4020...0x7fff => {
-                error!("It's not implemented to load {:#x}", addr);
-                unreachable!()
-            }
-            0x8000...0xffff => {
-                let addr = (addr - 0x8000) as usize;
-                self.cartridge.prg_rom[addr]
-            }
+            0x4020...0x7fff => panic!("not implemented to load {:#x}", addr),
+            0x8000...0xffff => self.cartridge.prg_rom[(addr - 0x8000) as usize],
         }
     }
 
@@ -56,13 +44,7 @@ impl<'a> Bus<'a> {
             0x2000...0x3fff => self.ppu.store((addr - 0x2000) & 0x7, val),
             0x4000...0x4015 | 0x4018...0x401f => self.apu.store(addr - 0x4000, val),
             0x4016 | 0x4017 => {} // TODO: implement key pad
-            0x4020...0xffff => {
-                eprintln!(
-                    "error: not implemented to set {:#x} at address {:#x}",
-                    val, addr
-                );
-                unreachable!()
-            }
+            0x4020...0xffff => panic!("not implemented to set {:#x} at address {:#x}", val, addr),
         };
     }
 
