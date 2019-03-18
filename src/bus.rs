@@ -2,9 +2,8 @@ use crate::apu::Apu;
 use crate::cartridge::Cartridge;
 use crate::memory::Memory;
 use crate::ppu::Ppu;
-use crate::ppu::Rgb;
-use log::error;
 
+/// Memory map for cpu
 pub struct Bus<'a> {
     cartridge: &'a Cartridge,
     wram: &'a mut Memory,
@@ -13,6 +12,7 @@ pub struct Bus<'a> {
 }
 
 impl<'a> Bus<'a> {
+    /// Create bus from nesessary components
     pub fn new(
         cartridge: &'a Cartridge,
         wram: &'a mut Memory,
@@ -27,6 +27,7 @@ impl<'a> Bus<'a> {
         }
     }
 
+    /// Load 1 byte from address
     pub fn load(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000...0x1fff => self.wram.load(addr & 0x07ff),
@@ -38,6 +39,7 @@ impl<'a> Bus<'a> {
         }
     }
 
+    /// Store 1 byte value into address
     pub fn store(&mut self, addr: u16, val: u8) {
         match addr {
             0x0000...0x1fff => self.wram.store(addr & 0x7ff, val), // TODO: correct for mirror mode?
@@ -48,10 +50,12 @@ impl<'a> Bus<'a> {
         };
     }
 
+    /// Load 2 bytes from address
     pub fn load_w(&mut self, addr: u16) -> u16 {
         u16::from(self.load(addr)) | (u16::from(self.load(addr + 1)) << 8)
     }
 
+    /// Store 2 bytes value into address with little endian.
     pub fn store_w(&mut self, addr: u16, val: u16) {
         self.store(addr, (val & 0xff) as u8);
         self.store(addr + 1, (val >> 8) as u8);

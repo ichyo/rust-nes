@@ -20,7 +20,7 @@ fn main() {
     let cartridge = Cartridge::parse_file(&buffer).expect("invalid nes format");
     let mut wram = Memory::new();
     let mut apu = Apu::new();
-    let mut ppu = Ppu::new(&cartridge.chr_rom);
+    let mut ppu = Ppu::from_cartridge(&cartridge);
     let mut cpu = Cpu::new();
     let mut bus = Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu);
     cpu.reset(&mut bus);

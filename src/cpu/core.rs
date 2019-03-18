@@ -12,11 +12,13 @@ enum Operand {
 }
 
 #[derive(Default)]
+/// Cpu model with register
 pub struct Cpu {
     reg: Register,
 }
 
 impl Cpu {
+    /// Create cpu model with initial register
     pub fn new() -> Self {
         Cpu {
             reg: Register::new(),
@@ -25,7 +27,8 @@ impl Cpu {
 }
 
 impl Cpu {
-    // Fetches and executes instruction and returns the number of clocks
+    /// Fetches and executes instruction.
+    /// Returns the number of clocks
     pub fn exec(&mut self, bus: &mut Bus) -> u8 {
         let inst = self.fetch_instruction(bus);
         let addr = self.fetch_operand(bus, inst.mode);
@@ -35,6 +38,7 @@ impl Cpu {
         inst.cycles
     }
 
+    /// Reset state
     pub fn reset(&mut self, bus: &mut Bus) {
         self.reg = Register::new();
         self.reg.PC = bus.load_w(0xfffc);

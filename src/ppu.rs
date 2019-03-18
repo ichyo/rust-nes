@@ -1,6 +1,8 @@
+use crate::cartridge::Cartridge;
 use lazy_static::lazy_static;
 use log::{error, trace, warn};
 
+/// Picture Processing Unit. handle graphics.
 pub struct Ppu {
     reg_ctrl: u8,
     reg_mask: u8,
@@ -12,9 +14,13 @@ pub struct Ppu {
 }
 
 #[derive(Clone, Copy, Debug)]
+/// RGB value
 pub struct Rgb {
+    /// red
     pub r: u8,
+    /// green
     pub g: u8,
+    /// blue
     pub b: u8,
 }
 
@@ -124,6 +130,7 @@ const WINDOW_HEIGHT: usize = 240;
 const WINDOW_WIDTH: usize = 256;
 
 impl Ppu {
+    /// Render method for testing. it will be removed soon.
     pub fn render(&self) -> Vec<Rgb> {
         let mut res = Vec::new();
         for y in 0..WINDOW_HEIGHT {
@@ -151,7 +158,12 @@ impl Ppu {
         res
     }
 
-    pub fn new(chr_rom: &[u8]) -> Ppu {
+    /// Create PPU from cartridge
+    pub fn from_cartridge(cartridge: &Cartridge) -> Ppu {
+        Ppu::new(&cartridge.chr_rom)
+    }
+
+    fn new(chr_rom: &[u8]) -> Ppu {
         assert_eq!(chr_rom.len(), 0x2000);
         let mut pattern_table = [0; 0x2000];
         pattern_table.clone_from_slice(chr_rom);
@@ -166,6 +178,7 @@ impl Ppu {
         }
     }
 
+    /// load interface exposed to cpu via bus
     pub fn load(&mut self, addr: u16) -> u8 {
         eprintln!("[Ppu] load addr={:#x}", addr);
         match addr {
@@ -187,6 +200,7 @@ impl Ppu {
         }
     }
 
+    /// store interface exposed to cpu via bus
     pub fn store(&mut self, addr: u16, val: u8) {
         trace!("Store addr={:#x} val={:#x}", addr, val);
         match addr {

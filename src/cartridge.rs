@@ -1,12 +1,16 @@
 const PRG_ROM_PAGE_UNIT: usize = 16 * 1024;
 const CHR_ROM_PAGE_UNIT: usize = 8 * 1024;
 
+/// NES cartridge with two memory chips.
 pub struct Cartridge {
+    /// rom connected to cpu
     pub prg_rom: Vec<u8>,
+    /// rom connected to ppu
     pub chr_rom: Vec<u8>,
 }
 
 impl Cartridge {
+    /// Construct from iNES file format
     pub fn parse_file(d: &[u8]) -> Result<Cartridge, String> {
         let mut it = d.iter().cloned();
         let magic = read_bytes(&mut it, 4)?;
