@@ -3,6 +3,11 @@ rust:
   - stable
   - beta
   - nightly
+before_install:
+  - wget https://www.libsdl.org/release/SDL2-2.0.9.tar.gz -O SDL2-2.0.9.tar.gz
+  - tar -xzvf SDL2-2.0.9.tar.gz
+install:
+  - (cd SDL2-2.0.9 && ./configure && make && sudo make install)
 matrix:
   allow_failures:
     - rust: nightly
