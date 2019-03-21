@@ -1,6 +1,12 @@
+mod background;
+mod palette;
+mod pattern;
+
 use crate::cartridge::Cartridge;
-use lazy_static::lazy_static;
+use background::NameTables;
 use log::{error, trace, warn};
+use palette::Palettes;
+use pattern::PatternTable;
 
 /// Picture Processing Unit. handle graphics.
 pub struct Ppu {
@@ -8,122 +14,9 @@ pub struct Ppu {
     reg_mask: u8,
     last_store: (u16, u8),
     vram_addr: u16,
-    pattern_table: [u8; 0x2000],
-    name_table: [u8; 0x1000],
-    palette_table: [u8; 0x20],
-}
-
-#[derive(Clone, Copy, Debug)]
-/// RGB value
-pub struct Rgb {
-    /// red
-    pub r: u8,
-    /// green
-    pub g: u8,
-    /// blue
-    pub b: u8,
-}
-
-impl Rgb {
-    fn new(r: u8, g: u8, b: u8) -> Rgb {
-        Rgb { r, g, b }
-    }
-}
-
-lazy_static! {
-    static ref COLORS: [Rgb; 64] = [
-        Rgb::new(124, 124, 124),
-        Rgb::new(0, 0, 252),
-        Rgb::new(0, 0, 188),
-        Rgb::new(68, 40, 188),
-        Rgb::new(148, 0, 132),
-        Rgb::new(168, 0, 32),
-        Rgb::new(168, 16, 0),
-        Rgb::new(136, 20, 0),
-        Rgb::new(80, 48, 0),
-        Rgb::new(0, 120, 0),
-        Rgb::new(0, 104, 0),
-        Rgb::new(0, 88, 0),
-        Rgb::new(0, 64, 88),
-        Rgb::new(0, 0, 0),
-        Rgb::new(0, 0, 0),
-        Rgb::new(0, 0, 0),
-        Rgb::new(188, 188, 188),
-        Rgb::new(0, 120, 248),
-        Rgb::new(0, 88, 248),
-        Rgb::new(104, 68, 252),
-        Rgb::new(216, 0, 204),
-        Rgb::new(228, 0, 88),
-        Rgb::new(248, 56, 0),
-        Rgb::new(228, 92, 16),
-        Rgb::new(172, 124, 0),
-        Rgb::new(0, 184, 0),
-        Rgb::new(0, 168, 0),
-        Rgb::new(0, 168, 68),
-        Rgb::new(0, 136, 136),
-        Rgb::new(0, 0, 0),
-        Rgb::new(0, 0, 0),
-        Rgb::new(0, 0, 0),
-        Rgb::new(248, 248, 248),
-        Rgb::new(60, 188, 252),
-        Rgb::new(104, 136, 252),
-        Rgb::new(152, 120, 248),
-        Rgb::new(248, 120, 248),
-        Rgb::new(248, 88, 152),
-        Rgb::new(248, 120, 88),
-        Rgb::new(252, 160, 68),
-        Rgb::new(248, 184, 0),
-        Rgb::new(184, 248, 24),
-        Rgb::new(88, 216, 84),
-        Rgb::new(88, 248, 152),
-        Rgb::new(0, 232, 216),
-        Rgb::new(120, 120, 120),
-        Rgb::new(0, 0, 0),
-        Rgb::new(0, 0, 0),
-        Rgb::new(252, 252, 252),
-        Rgb::new(164, 228, 252),
-        Rgb::new(184, 184, 248),
-        Rgb::new(216, 184, 248),
-        Rgb::new(248, 184, 248),
-        Rgb::new(248, 164, 192),
-        Rgb::new(240, 208, 176),
-        Rgb::new(252, 224, 168),
-        Rgb::new(248, 216, 120),
-        Rgb::new(216, 248, 120),
-        Rgb::new(184, 248, 184),
-        Rgb::new(184, 248, 216),
-        Rgb::new(0, 252, 252),
-        Rgb::new(248, 216, 248),
-        Rgb::new(0, 0, 0),
-        Rgb::new(0, 0, 0),
-    ];
-}
-
-struct Sprite([[u8; 8]; 8]);
-
-impl Sprite {
-    fn new() -> Sprite {
-        Sprite([[0; 8]; 8])
-    }
-
-    fn parse(chr: &[u8], index: usize) -> Sprite {
-        let base = index << 4;
-        let mut sprite = Sprite::new();
-        for y in 0..8 {
-            for x in 0..8 {
-                let c1 = chr[base + y] >> (7 - x) & 1;
-                let c2 = chr[base + y + 8] >> (7 - x) & 1;
-                let c = (c2 << 1) | c1;
-                assert!(c <= 3);
-                sprite.0[y][x] = c;
-            }
-        }
-        sprite
-    }
-
-    fn get(&self, x: usize, y: usize) -> u8 {
-        self.0[y][x]
-    }
+    pattern_table: PatternTable,
+    name_table: NameTables,
+    palette_table: Palettes,
 }
 
 const WINDOW_HEIGHT: usize = 240;
@@ -131,28 +24,21 @@ const WINDOW_WIDTH: usize = 256;
 
 impl Ppu {
     /// Render method for testing. it will be removed soon.
-    pub fn render(&self) -> Vec<Rgb> {
+    pub fn render(&self) -> Vec<u8> {
         let mut res = Vec::new();
         for y in 0..WINDOW_HEIGHT {
             for x in 0..WINDOW_WIDTH {
-                let by = y / 8;
-                let bx = x / 8;
-                let ay = y / 16;
-                let ax = x / 16;
-
-                let name_index = by * (WINDOW_WIDTH / 8) + bx;
-                let pattern_index = self.name_table[name_index] as usize;
-
-                let attr_index = 0x3c0 + ay * (WINDOW_WIDTH / 16) + ax;
-                let attr_shift = 4 * (by % 2) + 2 * (bx % 2);
-                let palette_index = (self.name_table[attr_index] >> attr_shift) % 0b11;
-
-                let sprite = Sprite::parse(&self.pattern_table, pattern_index);
-                let sprite_value = sprite.get(x % 8, y % 8);
-                let palette_value = self.palette_table[(palette_index * 4 + sprite_value) as usize];
-
-                let rgb = COLORS[palette_value as usize];
-                res.push(rgb);
+                let pattern_index = self.name_table.get_pattern_index(x as u16, y as u16);
+                let palette_index = self.name_table.get_palette_index(x as u16, y as u16);
+                let sprite_value =
+                    self.pattern_table
+                        .get_left_value(pattern_index, (x % 8) as u8, (y % 8) as u8);
+                let rgb = self
+                    .palette_table
+                    .get_background_color(palette_index, sprite_value);
+                res.push(rgb.r);
+                res.push(rgb.g);
+                res.push(rgb.b);
             }
         }
         res
@@ -164,17 +50,14 @@ impl Ppu {
     }
 
     fn new(chr_rom: &[u8]) -> Ppu {
-        assert_eq!(chr_rom.len(), 0x2000);
-        let mut pattern_table = [0; 0x2000];
-        pattern_table.clone_from_slice(chr_rom);
         Ppu {
             reg_ctrl: 0,
             reg_mask: 0,
             last_store: (0, 0),
             vram_addr: 0,
-            pattern_table,
-            name_table: [0; 0x1000],
-            palette_table: [0; 0x20],
+            pattern_table: PatternTable::new(chr_rom),
+            name_table: NameTables::new(),
+            palette_table: Palettes::new(),
         }
     }
 
@@ -237,10 +120,10 @@ impl Ppu {
     fn load_vram(&self, addr: u16) -> u8 {
         trace!("Load(vram) addr={:#x}", addr);
         match addr {
-            0x0000...0x1fff => self.pattern_table[addr as usize],
-            0x2000...0x2fff => self.name_table[(addr - 0x2000) as usize],
-            0x3000...0x3eff => self.name_table[(addr - 0x3000) as usize],
-            0x3f00...0x3fff => self.palette_table[(addr & 0x1f) as usize],
+            0x0000...0x1fff => self.pattern_table.load(addr),
+            0x2000...0x2fff => self.name_table.load(addr - 0x2000),
+            0x3000...0x3eff => self.name_table.load(addr - 0x3000),
+            0x3f00...0x3fff => self.palette_table.load(addr & 0x1f),
             0x4000...0xffff => unreachable!(),
         }
     }
@@ -249,9 +132,9 @@ impl Ppu {
         trace!("Store(vram) addr = {:#x} val = {:#x}", addr, val);
         match addr {
             0x0000...0x1fff => error!("it doesn't support to write to pattern table"),
-            0x2000...0x2fff => self.name_table[(addr - 0x2000) as usize] = val,
-            0x3000...0x3eff => self.name_table[(addr - 0x3000) as usize] = val,
-            0x3f00...0x3fff => self.palette_table[(addr & 0x1f) as usize] = val,
+            0x2000...0x2fff => self.name_table.store(addr - 0x2000, val),
+            0x3000...0x3eff => self.name_table.store(addr - 0x3000, val),
+            0x3f00...0x3fff => self.palette_table.store(addr & 0x1f, val),
             0x4000...0xffff => unreachable!(),
         }
     }

@@ -74,18 +74,7 @@ fn main() -> Result<(), String> {
             }
         }
         let rgbs = ppu.render();
-        texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {
-            assert_eq!(width * height * 3, buffer.len());
-            for y in 0..height {
-                for x in 0..width {
-                    let rgb = rgbs[y * width + x];
-                    let idx = y * pitch + x * 3;
-                    buffer[idx] = rgb.r;
-                    buffer[idx + 1] = rgb.g;
-                    buffer[idx + 2] = rgb.b;
-                }
-            }
-        })?;
+        texture.update(None, &rgbs, width * 3);
         canvas.copy(&texture, None, None)?;
         canvas.present();
     }
