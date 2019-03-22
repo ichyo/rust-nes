@@ -1,3 +1,5 @@
+use log::info;
+
 const PRG_ROM_PAGE_UNIT: usize = 16 * 1024;
 const CHR_ROM_PAGE_UNIT: usize = 8 * 1024;
 
@@ -19,8 +21,20 @@ impl Cartridge {
         }
         let prg_rom_pages = read_byte(&mut it)? as usize;
         let chr_rom_pages = read_byte(&mut it)? as usize;
+        info!(
+            "Loading {} prg pages and {} chr pages",
+            prg_rom_pages, chr_rom_pages
+        );
         let _ = read_bytes(&mut it, 10)?;
-        let prg_rom = read_bytes(&mut it, prg_rom_pages * PRG_ROM_PAGE_UNIT)?;
+        let mut prg_rom = read_bytes(&mut it, prg_rom_pages * PRG_ROM_PAGE_UNIT)?;
+
+        // TODO: this is workaround to run nestest.
+        // See https://github.com/PyAndy/Py3NES/issues/1#issuecomment-224071286
+        if prg_rom_pages == 1 {
+            let copy = prg_rom.clone();
+            prg_rom.extend(copy);
+        }
+
         let chr_rom = read_bytes(&mut it, chr_rom_pages * CHR_ROM_PAGE_UNIT)?;
         Ok(Cartridge { prg_rom, chr_rom })
     }

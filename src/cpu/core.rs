@@ -1,7 +1,7 @@
 use super::instructions::{AddressingMode, Instruction, Opcode};
 use super::register::Register;
 use crate::bus::Bus;
-use log::trace;
+use log::{info, trace};
 
 #[derive(Debug, Copy, Clone)]
 enum Operand {
@@ -30,11 +30,42 @@ impl Cpu {
     /// Fetches and executes instruction.
     /// Returns the number of clocks
     pub fn exec(&mut self, bus: &mut Bus) -> u8 {
+        let before_pc = self.reg.PC;
         let inst = self.fetch_instruction(bus);
         let addr = self.fetch_operand(bus, inst.mode);
-        trace!("Execute inst={:?} addr={:?}", inst, addr);
+        let after_pc = self.reg.PC;
+
+        let code = (before_pc..after_pc)
+            .map(|pc| bus.load(pc))
+            .map(|x| format!("{:02X}", x))
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        let addr_fmt = match addr {
+            Operand::None => "".to_string(),
+            Operand::Immediate(x) => format!("#${:02X}", x),
+            Operand::Accumulator => "?".to_string(),
+            Operand::Memory(x) if after_pc - before_pc == 2 => {
+                format!("${:02X} = {:02X}", x, bus.load(x))
+            }
+            Operand::Memory(x) => format!("${:04X}", x),
+        };
+
+        let reg_fmt = format!(
+            "A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
+            self.reg.A, self.reg.X, self.reg.Y, self.reg.P, self.reg.S
+        );
+
+        trace!(
+            "{:4X}  {:8}  {:?} {:30}  {}",
+            before_pc,
+            code,
+            inst.opcode,
+            addr_fmt,
+            reg_fmt,
+        );
+
         self.execute_instruction(bus, inst.opcode, addr);
-        trace!("Changed to {:?}", self.reg);
         inst.cycles
     }
 
@@ -42,6 +73,13 @@ impl Cpu {
     pub fn reset(&mut self, bus: &mut Bus) {
         self.reg = Register::new();
         self.reg.PC = bus.load_w(0xfffc);
+    }
+
+    /// NMI interrupts
+    pub fn nmi(&mut self, bus: &mut Bus) {
+        // TODO: this is for testing. implement correctly
+        self.reg.PC = bus.load_w(0xfffa);
+        info!("nmi loaded {}", self.reg.PC);
     }
 
     fn set_zero_and_negative_flags(&mut self, val: u8) {

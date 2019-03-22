@@ -10,7 +10,9 @@ use std::io::prelude::*;
 
 fn main() {
     env_logger::Builder::new()
-        .filter(None, log::LevelFilter::max())
+        .format(|buf, record| writeln!(buf, "{}", record.args()))
+        .filter(None, log::LevelFilter::Warn)
+        .filter(Some("nes::cpu::core"), log::LevelFilter::Trace)
         .init();
 
     let path = env::args().nth(1).expect("please specify the path to nes");
@@ -23,8 +25,9 @@ fn main() {
     let mut ppu = Ppu::from_cartridge(&cartridge);
     let mut cpu = Cpu::new();
     let mut bus = Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu);
-    cpu.reset(&mut bus);
-    for _ in 0..1000 {
+
+    //cpu.reset(&mut bus);
+    for _ in 0..100000 {
         cpu.exec(&mut bus);
     }
 }

@@ -12,7 +12,7 @@ use std::io::prelude::*;
 
 fn main() -> Result<(), String> {
     env_logger::Builder::new()
-        .filter(None, log::LevelFilter::max())
+        .filter(None, log::LevelFilter::Trace)
         .init();
 
     let path = env::args().nth(1).expect("please specify the path to nes");
@@ -63,11 +63,10 @@ fn main() -> Result<(), String> {
 
     let mut event_pump = sdl_context.event_pump()?;
 
-    for i in 0..1000 {
-        cpu.exec(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu));
-    }
-
     'main: loop {
+        for i in 0..1000 {
+            cpu.exec(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu));
+        }
         for event in event_pump.poll_iter() {
             if let Event::Quit { .. } = event {
                 break 'main;
@@ -77,6 +76,7 @@ fn main() -> Result<(), String> {
         texture.update(None, &rgbs, width * 3);
         canvas.copy(&texture, None, None)?;
         canvas.present();
+        cpu.nmi(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu));
     }
 
     Ok(())

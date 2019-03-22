@@ -63,7 +63,7 @@ impl Ppu {
 
     /// load interface exposed to cpu via bus
     pub fn load(&mut self, addr: u16) -> u8 {
-        eprintln!("[Ppu] load addr={:#x}", addr);
+        trace!("[Ppu] load addr={:#x}", addr);
         match addr {
             0x00 => {
                 eprintln!("Warning: doesn't support load control register (0x00)");
@@ -73,7 +73,8 @@ impl Ppu {
                 eprintln!("Warning: doesn't support load mask register (0x01)");
                 self.reg_mask
             }
-            0x02...0x06 => 0,
+            0x02 => 0b1000_0000,
+            0x03...0x06 => 0,
             0x07 => {
                 let result = self.load_vram(self.vram_addr);
                 self.vram_addr += self.get_addr_incr();

@@ -847,6 +847,6 @@ fn lookup_instruction(code: u8) -> Instruction {
             mode: AddressingMode::AbsoluteX,
             cycles: 7,
         },
-        _ => panic!("invalid instruction code {}", code),
+        _ => panic!("invalid instruction code {:02X}", code),
     }
 }
