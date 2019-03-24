@@ -56,6 +56,14 @@ impl Cpu {
                 let b = bus.load_w(u16::from(a));
                 format!("(${:02X}),Y = {:04X} @ {:04X}", a, b, x)
             }
+            (AddressingMode::ZeroPageX, Operand::Memory(x)) => {
+                let a = bus.load(pc + 1);
+                format!("${:02X},X @ {:02X}", a, x)
+            }
+            (AddressingMode::ZeroPageY, Operand::Memory(x)) => {
+                let a = bus.load(pc + 1);
+                format!("${:02X},Y @ {:02X}", a, x)
+            }
             (AddressingMode::AbsoluteX, Operand::Memory(x)) => {
                 let a = bus.load_w(pc + 1);
                 format!("${:04X},X @ {:04X}", a, x)
