@@ -45,12 +45,26 @@ impl Cpu {
             Operand::None => "".to_string(),
             Operand::Immediate(x) => format!("#${:02X}", x),
             Operand::Accumulator => "?".to_string(),
-            Operand::Memory(x)
-                if inst.mode.operand_bytes() == 1 && inst.mode != AddressingMode::Relative =>
-            {
-                format!("${:02X} = {:02X}", x, bus.load(x))
-            }
+            Operand::Memory(x) if inst.mode.operand_bytes() == 1 => format!("${:02X}", x),
             Operand::Memory(x) => format!("${:04X}", x),
+        };
+
+        let addr_value_fmt = if let Operand::Memory(x) = addr {
+            match inst.opcode {
+                Opcode::JMP
+                | Opcode::JSR
+                | Opcode::BCS
+                | Opcode::BCC
+                | Opcode::BEQ
+                | Opcode::BNE
+                | Opcode::BVS
+                | Opcode::BVC
+                | Opcode::BPL
+                | Opcode::BMI => "".to_string(),
+                _ => format!(" = {:02X}", bus.load(x)),
+            }
+        } else {
+            "".to_string()
         };
 
         let reg_fmt = format!(
@@ -67,7 +81,7 @@ impl Cpu {
             pc,
             code,
             inst.opcode,
-            addr_fmt,
+            addr_fmt + &addr_value_fmt,
             reg_fmt,
         );
 
@@ -127,9 +141,10 @@ impl Cpu {
     }
 
     fn comp_inst(&mut self, x: u8, m: u8) {
+        let r = x.wrapping_sub(m);
         self.reg.P.set_carry_flag(x >= m);
         self.reg.P.set_zero_flag(x == m);
-        self.reg.P.set_negative_flag(x < m);
+        self.reg.P.set_negative_flag((r & 0x80) != 0);
     }
 
     fn jump(&mut self, addr: u16) {
@@ -142,8 +157,8 @@ impl Cpu {
     }
 
     fn push_stack_w(&mut self, bus: &mut Bus, val: u16) {
-        self.push_stack(bus, (val & 0xff) as u8);
         self.push_stack(bus, (val >> 8) as u8);
+        self.push_stack(bus, (val & 0xff) as u8);
     }
 
     fn pop_stack(&mut self, bus: &mut Bus) -> u8 {
@@ -152,8 +167,8 @@ impl Cpu {
     }
 
     fn pop_stack_w(&mut self, bus: &mut Bus) -> u16 {
-        let high = self.pop_stack(bus);
         let low = self.pop_stack(bus);
+        let high = self.pop_stack(bus);
         u16::from(low) | (u16::from(high) << 8)
     }
 
@@ -177,7 +192,7 @@ impl Cpu {
             }
             AddressingMode::ZeroPageX => {
                 let value = bus.load(addr);
-                Operand::Memory(u16::from(value + self.reg.X))
+                Operand::Memory(u16::from(value.wrapping_add(self.reg.X)))
             }
             AddressingMode::ZeroPageY => {
                 let value = bus.load(addr);
@@ -269,7 +284,6 @@ impl Cpu {
             Opcode::TXS => {
                 let val = self.reg.X;
                 self.reg.S = val;
-                self.set_zero_and_negative_flags(val);
             }
             Opcode::TYA => {
                 let val = self.reg.Y;
@@ -319,17 +333,32 @@ impl Cpu {
                 self.reg.P.set_negative_flag((m & 0x80) != 0);
             }
             Opcode::ADC => {
-                // TODO: overflow and carry flag
-                let val = self.reg.A + self.load_inst(bus, addr) + self.reg.P.carry_flag() as u8;
+                let (x, y) = (self.reg.A, self.load_inst(bus, addr));
+                let (val, overflow1) = x.overflowing_add(y);
+                let (val, overflow2) = val.overflowing_add(self.reg.P.carry_flag() as u8);
+                let carry = overflow1 || overflow2;
+                let x_neg = (x & 0x80) != 0;
+                let y_neg = (y & 0x80) != 0;
+                let val_neg = (val & 0x80) != 0;
+                let overflow = (x_neg && y_neg && !val_neg) || (!x_neg && !y_neg && val_neg);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
+                self.reg.P.set_carry_flag(carry);
+                self.reg.P.set_overflow_flag(overflow);
             }
             Opcode::SBC => {
-                // TODO: overflow and carry flag
-                let val =
-                    self.reg.A - self.load_inst(bus, addr) - (1 - self.reg.P.carry_flag() as u8);
+                let (x, y) = (self.reg.A, self.load_inst(bus, addr));
+                let (val, overflow1) = x.overflowing_sub(y);
+                let (val, overflow2) = val.overflowing_sub(1 - self.reg.P.carry_flag() as u8);
+                let carry = !(overflow1 || overflow2);
+                let x_neg = (x & 0x80) != 0;
+                let y_neg = (y & 0x80) != 0;
+                let val_neg = (val & 0x80) != 0;
+                let overflow = (x_neg && !y_neg && !val_neg) || (!x_neg && y_neg && val_neg);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
+                self.reg.P.set_carry_flag(carry);
+                self.reg.P.set_overflow_flag(overflow);
             }
             Opcode::CMP => {
                 let a = self.reg.A;
