@@ -64,7 +64,7 @@ fn main() -> Result<(), String> {
     let mut event_pump = sdl_context.event_pump()?;
 
     'main: loop {
-        for i in 0..1000 {
+        for i in 0..36000 {
             cpu.exec(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu));
         }
         for event in event_pump.poll_iter() {

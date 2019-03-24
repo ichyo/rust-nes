@@ -159,12 +159,6 @@ impl Cpu {
 
     fn jump_inst(&mut self, addr: Operand) {
         match addr {
-            /*
-            Operand::Immediate(val) => {
-                let pc = i32::from(self.reg.PC) + i32::from(val as i8);
-                self.jump(pc as u16);
-            }
-            */
             Operand::Memory(addr) => self.jump(addr),
             _ => unreachable!(),
         }
@@ -182,8 +176,8 @@ impl Cpu {
     }
 
     fn push_stack(&mut self, bus: &mut Bus, val: u8) {
-        self.reg.S -= 1;
-        bus.store(u16::from(self.reg.S + 1) + 0x100, val);
+        self.reg.S = self.reg.S.wrapping_sub(1);
+        bus.store(u16::from(self.reg.S.wrapping_add(1)) + 0x100, val);
     }
 
     fn push_stack_w(&mut self, bus: &mut Bus, val: u16) {
@@ -192,7 +186,7 @@ impl Cpu {
     }
 
     fn pop_stack(&mut self, bus: &mut Bus) -> u8 {
-        self.reg.S += 1;
+        self.reg.S = self.reg.S.wrapping_add(1);
         bus.load(u16::from(self.reg.S) + 0x100)
     }
 
@@ -259,7 +253,8 @@ impl Cpu {
             }
             AddressingMode::Relative => {
                 let value = bus.load(addr);
-                Operand::Memory(self.reg.PC + u16::from(value) + 2)
+                let next = i32::from(self.reg.PC) + i32::from(value as i8) + 2;
+                Operand::Memory(next as u16)
             }
         }
     }
