@@ -44,7 +44,7 @@ impl Cpu {
         let addr_fmt = match addr {
             Operand::None => "".to_string(),
             Operand::Immediate(x) => format!("#${:02X}", x),
-            Operand::Accumulator => "?".to_string(),
+            Operand::Accumulator => "A".to_string(),
             Operand::Memory(x) if inst.mode.operand_bytes() == 1 => format!("${:02X}", x),
             Operand::Memory(x) => format!("${:04X}", x),
         };
@@ -407,31 +407,33 @@ impl Cpu {
             }
             Opcode::ASL => {
                 let val = self.load_inst(bus, addr);
+                let new = (val & 0x7f) << 1;
                 self.reg.P.set_carry_flag(val & 0x80 != 0);
-                self.reg.P.set_negative_flag(val & 0x40 != 0);
-                self.reg.P.set_zero_flag(val == 0);
-                self.write_inst(bus, addr, (val & 0x7f) << 1);
+                self.set_zero_and_negative_flags(new);
+                self.write_inst(bus, addr, new);
             }
             Opcode::LSR => {
                 let val = self.load_inst(bus, addr);
-                self.reg.P.set_carry_flag(val & 0x01 != 0);
-                self.reg.P.set_negative_flag(false);
-                self.reg.P.set_zero_flag(val == 0);
-                self.write_inst(bus, addr, val >> 1);
+                let new = val >> 1;
+                self.reg.P.set_carry_flag((val & 0x01) != 0);
+                self.set_zero_and_negative_flags(new);
+                self.write_inst(bus, addr, new);
             }
             Opcode::ROL => {
                 let val = self.load_inst(bus, addr);
+                let c = self.reg.P.carry_flag() as u8;
+                let new = ((val & 0x7f) << 1) | c;
                 self.reg.P.set_carry_flag(val & 0x80 != 0);
-                self.reg.P.set_negative_flag(val & 0x40 != 0);
-                self.reg.P.set_zero_flag(val == 0);
-                self.write_inst(bus, addr, ((val & 0x7f) << 1) | ((val & 0x80) >> 7));
+                self.set_zero_and_negative_flags(new);
+                self.write_inst(bus, addr, new);
             }
             Opcode::ROR => {
                 let val = self.load_inst(bus, addr);
+                let c = self.reg.P.carry_flag() as u8;
+                let new = (val >> 1) | (c << 7);
                 self.reg.P.set_carry_flag(val & 0x01 != 0);
-                self.reg.P.set_negative_flag(val & 0x01 != 0);
-                self.reg.P.set_zero_flag(val == 0);
-                self.write_inst(bus, addr, (val >> 1) | ((val & 0x01) << 7));
+                self.set_zero_and_negative_flags(new);
+                self.write_inst(bus, addr, new);
             }
             Opcode::JMP => {
                 self.jump_inst(addr);
@@ -510,7 +512,12 @@ impl Cpu {
             Opcode::NOP => {
                 // no operation
             }
-            Opcode::RTI => unimplemented!(),
+            Opcode::RTI => {
+                let status = self.pop_stack(bus);
+                let pc = self.pop_stack_w(bus);
+                self.reg.P.set_u8(status);
+                self.reg.PC = pc;
+            }
         }
     }
 }
