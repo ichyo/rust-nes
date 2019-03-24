@@ -25,9 +25,8 @@ fn main() {
     let mut ppu = Ppu::from_cartridge(&cartridge);
     let mut cpu = Cpu::new();
     let mut bus = Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu);
-
     //cpu.reset(&mut bus);
-    for _ in 0..100000 {
+    for _ in 0..10000 {
         cpu.exec(&mut bus);
     }
 }

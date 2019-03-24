@@ -30,13 +30,13 @@ impl Cpu {
     /// Fetches and executes instruction.
     /// Returns the number of clocks
     pub fn exec(&mut self, bus: &mut Bus) -> u8 {
-        let before_pc = self.reg.PC;
+        let pc = self.reg.PC;
         let inst = self.fetch_instruction(bus);
         let addr = self.fetch_operand(bus, inst.mode);
-        let after_pc = self.reg.PC;
+        let inst_bytes = 1 + u16::from(inst.mode.operand_bytes());
 
-        let code = (before_pc..after_pc)
-            .map(|pc| bus.load(pc))
+        let code = (0..inst_bytes)
+            .map(|d| bus.load(pc + d))
             .map(|x| format!("{:02X}", x))
             .collect::<Vec<_>>()
             .join(" ");
@@ -45,7 +45,9 @@ impl Cpu {
             Operand::None => "".to_string(),
             Operand::Immediate(x) => format!("#${:02X}", x),
             Operand::Accumulator => "?".to_string(),
-            Operand::Memory(x) if after_pc - before_pc == 2 => {
+            Operand::Memory(x)
+                if inst.mode.operand_bytes() == 1 && inst.mode != AddressingMode::Relative =>
+            {
                 format!("${:02X} = {:02X}", x, bus.load(x))
             }
             Operand::Memory(x) => format!("${:04X}", x),
@@ -53,19 +55,25 @@ impl Cpu {
 
         let reg_fmt = format!(
             "A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
-            self.reg.A, self.reg.X, self.reg.Y, self.reg.P, self.reg.S
+            self.reg.A,
+            self.reg.X,
+            self.reg.Y,
+            self.reg.P.to_u8(),
+            self.reg.S
         );
 
         trace!(
-            "{:4X}  {:8}  {:?} {:30}  {}",
-            before_pc,
+            "{:4X}  {:8}  {:?} {:26}  {}",
+            pc,
             code,
             inst.opcode,
             addr_fmt,
             reg_fmt,
         );
 
+        self.reg.PC += inst_bytes;
         self.execute_instruction(bus, inst.opcode, addr);
+
         inst.cycles
     }
 
@@ -83,8 +91,8 @@ impl Cpu {
     }
 
     fn set_zero_and_negative_flags(&mut self, val: u8) {
-        self.reg.set_zero_flag(val == 0);
-        self.reg.set_negative_flag((val & 0x80) != 0);
+        self.reg.P.set_zero_flag(val == 0);
+        self.reg.P.set_negative_flag((val & 0x80) != 0);
     }
 
     fn load_inst(&mut self, bus: &mut Bus, addr: Operand) -> u8 {
@@ -107,19 +115,21 @@ impl Cpu {
 
     fn jump_inst(&mut self, addr: Operand) {
         match addr {
+            /*
             Operand::Immediate(val) => {
                 let pc = i32::from(self.reg.PC) + i32::from(val as i8);
                 self.jump(pc as u16);
             }
+            */
             Operand::Memory(addr) => self.jump(addr),
             _ => unreachable!(),
         }
     }
 
     fn comp_inst(&mut self, x: u8, m: u8) {
-        self.reg.set_carry_flag(x >= m);
-        self.reg.set_zero_flag(x == m);
-        self.reg.set_negative_flag(x < m);
+        self.reg.P.set_carry_flag(x >= m);
+        self.reg.P.set_zero_flag(x == m);
+        self.reg.P.set_negative_flag(x < m);
     }
 
     fn jump(&mut self, addr: u16) {
@@ -147,73 +157,62 @@ impl Cpu {
         u16::from(low) | (u16::from(high) << 8)
     }
 
-    fn fetch_instruction(&mut self, bus: &mut Bus) -> Instruction {
+    fn fetch_instruction(&self, bus: &mut Bus) -> Instruction {
         let code = bus.load(self.reg.PC);
-        self.reg.PC += 1;
         Instruction::from_code(code)
     }
 
-    fn fetch_operand(&mut self, bus: &mut Bus, mode: AddressingMode) -> Operand {
+    fn fetch_operand(&self, bus: &mut Bus, mode: AddressingMode) -> Operand {
+        let addr = self.reg.PC + 1;
         match mode {
             AddressingMode::Implied => Operand::None,
             AddressingMode::Accumulator => Operand::Accumulator,
             AddressingMode::Immediate => {
-                let value = bus.load(self.reg.PC);
-                self.reg.PC += 1;
+                let value = bus.load(addr);
                 Operand::Immediate(value)
             }
             AddressingMode::ZeroPage => {
-                let value = bus.load(self.reg.PC);
-                self.reg.PC += 1;
+                let value = bus.load(addr);
                 Operand::Memory(u16::from(value))
             }
             AddressingMode::ZeroPageX => {
-                let value = bus.load(self.reg.PC);
-                self.reg.PC += 1;
+                let value = bus.load(addr);
                 Operand::Memory(u16::from(value + self.reg.X))
             }
             AddressingMode::ZeroPageY => {
-                let value = bus.load(self.reg.PC);
-                self.reg.PC += 1;
+                let value = bus.load(addr);
                 Operand::Memory(u16::from(value + self.reg.Y))
             }
             AddressingMode::Absolute => {
-                let value = bus.load_w(self.reg.PC);
-                self.reg.PC += 2;
+                let value = bus.load_w(addr);
                 Operand::Memory(value)
             }
             AddressingMode::AbsoluteX => {
-                let value = bus.load_w(self.reg.PC);
-                self.reg.PC += 2;
+                let value = bus.load_w(addr);
                 Operand::Memory(value + u16::from(self.reg.X))
             }
             AddressingMode::AbsoluteY => {
-                let value = bus.load_w(self.reg.PC);
-                self.reg.PC += 2;
+                let value = bus.load_w(addr);
                 Operand::Memory(value + u16::from(self.reg.Y))
             }
             AddressingMode::Indirect => {
-                let addr = bus.load_w(self.reg.PC);
-                self.reg.PC += 2;
+                let addr = bus.load_w(addr);
                 let value = bus.load(addr);
                 Operand::Memory(u16::from(value))
             }
             AddressingMode::IndirectX => {
-                let addr = bus.load(self.reg.PC) + self.reg.X;
-                self.reg.PC += 1;
+                let addr = bus.load(addr) + self.reg.X;
                 let value = bus.load_w(u16::from(addr));
                 Operand::Memory(value)
             }
             AddressingMode::IndirectY => {
-                let addr = bus.load(self.reg.PC);
-                self.reg.PC += 1;
+                let addr = bus.load(addr);
                 let value = bus.load_w(u16::from(addr)) + u16::from(self.reg.Y);
                 Operand::Memory(value)
             }
             AddressingMode::Relative => {
-                let value = bus.load(self.reg.PC);
-                self.reg.PC += 1;
-                Operand::Immediate(value)
+                let value = bus.load(addr);
+                Operand::Memory(self.reg.PC + u16::from(value) + 2)
             }
         }
     }
@@ -282,7 +281,9 @@ impl Cpu {
                 self.push_stack(bus, val);
             }
             Opcode::PHP => {
-                let val = self.reg.P;
+                let mut p = self.reg.P.clone();
+                p.set_break_command(true);
+                let val = p.to_u8();
                 self.push_stack(bus, val);
             }
             Opcode::PLA => {
@@ -292,8 +293,8 @@ impl Cpu {
             }
             Opcode::PLP => {
                 let val = self.pop_stack(bus);
-                self.reg.P = val;
-                self.set_zero_and_negative_flags(val);
+                self.reg.P.set_u8(val);
+                self.reg.P.set_break_command(false);
             }
             Opcode::AND => {
                 let val = self.reg.A & self.load_inst(bus, addr);
@@ -311,20 +312,22 @@ impl Cpu {
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::BIT => {
-                let val = self.reg.A | self.load_inst(bus, addr);
-                self.reg.set_overflow_flag(val & 0x40 != 0);
-                self.reg.set_negative_flag(val & 0x80 != 0);
+                let m = self.load_inst(bus, addr);
+                let and = self.reg.A & m;
+                self.reg.P.set_zero_flag(and == 0);
+                self.reg.P.set_overflow_flag((m & 0x40) != 0);
+                self.reg.P.set_negative_flag((m & 0x80) != 0);
             }
             Opcode::ADC => {
                 // TODO: overflow and carry flag
-                let val = self.reg.A + self.load_inst(bus, addr) + self.reg.carry_flag() as u8;
+                let val = self.reg.A + self.load_inst(bus, addr) + self.reg.P.carry_flag() as u8;
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::SBC => {
                 // TODO: overflow and carry flag
                 let val =
-                    self.reg.A - self.load_inst(bus, addr) - (1 - self.reg.carry_flag() as u8);
+                    self.reg.A - self.load_inst(bus, addr) - (1 - self.reg.P.carry_flag() as u8);
                 self.reg.A = val;
                 self.set_zero_and_negative_flags(val);
             }
@@ -375,30 +378,30 @@ impl Cpu {
             }
             Opcode::ASL => {
                 let val = self.load_inst(bus, addr);
-                self.reg.set_carry_flag(val & 0x80 != 0);
-                self.reg.set_negative_flag(val & 0x40 != 0);
-                self.reg.set_zero_flag(val == 0);
+                self.reg.P.set_carry_flag(val & 0x80 != 0);
+                self.reg.P.set_negative_flag(val & 0x40 != 0);
+                self.reg.P.set_zero_flag(val == 0);
                 self.write_inst(bus, addr, (val & 0x7f) << 1);
             }
             Opcode::LSR => {
                 let val = self.load_inst(bus, addr);
-                self.reg.set_carry_flag(val & 0x01 != 0);
-                self.reg.set_negative_flag(false);
-                self.reg.set_zero_flag(val == 0);
+                self.reg.P.set_carry_flag(val & 0x01 != 0);
+                self.reg.P.set_negative_flag(false);
+                self.reg.P.set_zero_flag(val == 0);
                 self.write_inst(bus, addr, val >> 1);
             }
             Opcode::ROL => {
                 let val = self.load_inst(bus, addr);
-                self.reg.set_carry_flag(val & 0x80 != 0);
-                self.reg.set_negative_flag(val & 0x40 != 0);
-                self.reg.set_zero_flag(val == 0);
+                self.reg.P.set_carry_flag(val & 0x80 != 0);
+                self.reg.P.set_negative_flag(val & 0x40 != 0);
+                self.reg.P.set_zero_flag(val == 0);
                 self.write_inst(bus, addr, ((val & 0x7f) << 1) | ((val & 0x80) >> 7));
             }
             Opcode::ROR => {
                 let val = self.load_inst(bus, addr);
-                self.reg.set_carry_flag(val & 0x01 != 0);
-                self.reg.set_negative_flag(val & 0x01 != 0);
-                self.reg.set_zero_flag(val == 0);
+                self.reg.P.set_carry_flag(val & 0x01 != 0);
+                self.reg.P.set_negative_flag(val & 0x01 != 0);
+                self.reg.P.set_zero_flag(val == 0);
                 self.write_inst(bus, addr, (val >> 1) | ((val & 0x01) << 7));
             }
             Opcode::JMP => {
@@ -414,65 +417,65 @@ impl Cpu {
                 self.jump(addr + 1);
             }
             Opcode::BCC => {
-                if !self.reg.carry_flag() {
+                if !self.reg.P.carry_flag() {
                     self.jump_inst(addr);
                 }
             }
             Opcode::BCS => {
-                if self.reg.carry_flag() {
+                if self.reg.P.carry_flag() {
                     self.jump_inst(addr);
                 }
             }
             Opcode::BEQ => {
-                if self.reg.zero_flag() {
+                if self.reg.P.zero_flag() {
                     self.jump_inst(addr);
                 }
             }
             Opcode::BMI => {
-                if self.reg.negative_flag() {
+                if self.reg.P.negative_flag() {
                     self.jump_inst(addr);
                 }
             }
             Opcode::BNE => {
-                if !self.reg.zero_flag() {
+                if !self.reg.P.zero_flag() {
                     self.jump_inst(addr);
                 }
             }
             Opcode::BPL => {
-                if !self.reg.negative_flag() {
+                if !self.reg.P.negative_flag() {
                     self.jump_inst(addr);
                 }
             }
             Opcode::BVC => {
-                if !self.reg.overflow_flag() {
+                if !self.reg.P.overflow_flag() {
                     self.jump_inst(addr);
                 }
             }
             Opcode::BVS => {
-                if self.reg.overflow_flag() {
+                if self.reg.P.overflow_flag() {
                     self.jump_inst(addr);
                 }
             }
             Opcode::CLC => {
-                self.reg.set_carry_flag(false);
+                self.reg.P.set_carry_flag(false);
             }
             Opcode::CLD => {
-                // unimplemented in NES
+                self.reg.P.set_decimal_mode(false);
             }
             Opcode::CLI => {
-                self.reg.set_interrupt_disable_flag(false);
+                self.reg.P.set_interrupt_disable_flag(false);
             }
             Opcode::CLV => {
-                self.reg.set_overflow_flag(false);
+                self.reg.P.set_overflow_flag(false);
             }
             Opcode::SEC => {
-                self.reg.set_carry_flag(false);
+                self.reg.P.set_carry_flag(true);
             }
             Opcode::SED => {
-                // unimplemented in NES
+                self.reg.P.set_decimal_mode(true);
             }
             Opcode::SEI => {
-                self.reg.set_interrupt_disable_flag(true);
+                self.reg.P.set_interrupt_disable_flag(true);
             }
             Opcode::BRK => unimplemented!(),
             Opcode::NOP => {

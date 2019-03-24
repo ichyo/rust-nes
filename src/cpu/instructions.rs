@@ -13,7 +13,7 @@ impl Instruction {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum AddressingMode {
     Implied,
     Accumulator,
@@ -28,6 +28,26 @@ pub enum AddressingMode {
     IndirectX, // Indexed Indirect
     IndirectY, // Indirect Indexed
     Relative,
+}
+
+impl AddressingMode {
+    // Number of bytes to read
+    pub fn operand_bytes(self) -> u8 {
+        match self {
+            AddressingMode::Implied | AddressingMode::Accumulator => 0,
+            AddressingMode::Immediate
+            | AddressingMode::ZeroPage
+            | AddressingMode::ZeroPageX
+            | AddressingMode::ZeroPageY
+            | AddressingMode::IndirectX
+            | AddressingMode::IndirectY
+            | AddressingMode::Relative => 1,
+            AddressingMode::Absolute
+            | AddressingMode::AbsoluteX
+            | AddressingMode::AbsoluteY
+            | AddressingMode::Indirect => 2,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
