@@ -52,12 +52,24 @@ impl<'a> Bus<'a> {
 
     /// Load 2 bytes from address
     pub fn load_w(&mut self, addr: u16) -> u16 {
-        u16::from(self.load(addr)) | (u16::from(self.load(addr + 1)) << 8)
+        // From nestest, it seems page boundary wraps next address.
+        let next_addr = if addr == 0xff || addr == 0x02ff {
+            addr ^ 0xff
+        } else {
+            addr + 1
+        };
+        u16::from(self.load(addr)) | (u16::from(self.load(next_addr)) << 8)
     }
 
     /// Store 2 bytes value into address with little endian.
     pub fn store_w(&mut self, addr: u16, val: u16) {
+        // From nestest, it seems page boundary wraps next address.
+        let next_addr = if addr == 0xff || addr == 0x02ff {
+            addr ^ 0xff
+        } else {
+            addr + 1
+        };
         self.store(addr, (val & 0xff) as u8);
-        self.store(addr + 1, (val >> 8) as u8);
+        self.store(next_addr, (val >> 8) as u8);
     }
 }

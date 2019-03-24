@@ -41,12 +41,30 @@ impl Cpu {
             .collect::<Vec<_>>()
             .join(" ");
 
-        let addr_fmt = match addr {
-            Operand::None => "".to_string(),
-            Operand::Immediate(x) => format!("#${:02X}", x),
-            Operand::Accumulator => "A".to_string(),
-            Operand::Memory(x) if inst.mode.operand_bytes() == 1 => format!("${:02X}", x),
-            Operand::Memory(x) => format!("${:04X}", x),
+        let addr_fmt = match (inst.mode, addr) {
+            (AddressingMode::Indirect, Operand::Memory(x)) => {
+                let a = bus.load_w(pc + 1);
+                format!("(${:04X}) = {:04X}", a, x)
+            }
+            (AddressingMode::IndirectX, Operand::Memory(x)) => {
+                let a = bus.load(pc + 1);
+                let b = a.wrapping_add(self.reg.X);
+                format!("(${:02X},X) @ {:02X} = {:04X}", a, b, x)
+            }
+            (AddressingMode::IndirectY, Operand::Memory(x)) => {
+                let a = bus.load(pc + 1);
+                let b = bus.load_w(u16::from(a));
+                format!("(${:02X}),Y = {:04X} @ {:04X}", a, b, x)
+            }
+            (AddressingMode::AbsoluteY, Operand::Memory(x)) => {
+                let a = bus.load_w(pc + 1);
+                format!("${:04X},Y @ {:04X}", a, x)
+            }
+            (_, Operand::None) => "".to_string(),
+            (_, Operand::Immediate(x)) => format!("#${:02X}", x),
+            (_, Operand::Accumulator) => "A".to_string(),
+            (_, Operand::Memory(x)) if inst.mode.operand_bytes() == 1 => format!("${:02X}", x),
+            (_, Operand::Memory(x)) => format!("${:04X}", x),
         };
 
         let addr_value_fmt = if let Operand::Memory(x) = addr {
@@ -77,7 +95,7 @@ impl Cpu {
         );
 
         trace!(
-            "{:4X}  {:8}  {:?} {:26}  {}",
+            "{:04X}  {:8}  {:?} {:26}  {}",
             pc,
             code,
             inst.opcode,
@@ -212,18 +230,20 @@ impl Cpu {
             }
             AddressingMode::Indirect => {
                 let addr = bus.load_w(addr);
-                let value = bus.load(addr);
-                Operand::Memory(u16::from(value))
+                let value = bus.load_w(addr);
+                Operand::Memory(value)
             }
             AddressingMode::IndirectX => {
-                let addr = bus.load(addr) + self.reg.X;
+                let addr = bus.load(addr).wrapping_add(self.reg.X);
                 let value = bus.load_w(u16::from(addr));
                 Operand::Memory(value)
             }
             AddressingMode::IndirectY => {
                 let addr = bus.load(addr);
-                let value = bus.load_w(u16::from(addr)) + u16::from(self.reg.Y);
-                Operand::Memory(value)
+                let result = bus
+                    .load_w(u16::from(addr))
+                    .wrapping_add(u16::from(self.reg.Y));
+                Operand::Memory(result)
             }
             AddressingMode::Relative => {
                 let value = bus.load(addr);
@@ -376,7 +396,7 @@ impl Cpu {
                 self.comp_inst(y, m);
             }
             Opcode::INC => {
-                let val = self.load_inst(bus, addr) + 1;
+                let val = self.load_inst(bus, addr).wrapping_add(1);
                 self.write_inst(bus, addr, val);
                 self.set_zero_and_negative_flags(val);
             }
@@ -391,7 +411,7 @@ impl Cpu {
                 self.set_zero_and_negative_flags(val);
             }
             Opcode::DEC => {
-                let val = self.load_inst(bus, addr) - 1;
+                let val = self.load_inst(bus, addr).wrapping_sub(1);
                 self.write_inst(bus, addr, val);
                 self.set_zero_and_negative_flags(val);
             }
