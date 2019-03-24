@@ -28,7 +28,8 @@ impl Cpu {
 
 impl Cpu {
     /// Emit trace log to print next instruction information in nestest format.
-    pub fn log_trace(&self, bus: &mut Bus) {
+    pub fn exec_with_trace(&mut self, bus: &mut Bus) -> u8 {
+        // FIXME: this loads same address more than once, which may cause side effects.
         let pc = self.reg.PC;
         let inst = self.fetch_instruction(bus);
         let addr = self.fetch_operand(bus, inst.mode);
@@ -114,6 +115,11 @@ impl Cpu {
             addr_fmt + &addr_value_fmt,
             reg_fmt,
         );
+
+        self.reg.PC += inst_bytes;
+        self.execute_instruction(bus, inst.opcode, addr);
+
+        inst.cycles
     }
 
     /// Fetches and executes instruction.
@@ -138,6 +144,11 @@ impl Cpu {
     /// NMI interrupts
     pub fn nmi(&mut self, bus: &mut Bus) {
         // TODO: this is for testing. implement correctly
+        self.reg.P.set_break_command(false);
+        self.push_stack_w(bus, self.reg.PC);
+        self.push_stack(bus, self.reg.P.to_u8());
+        self.reg.P.set_interrupt_disable_flag(true);
+
         self.reg.PC = bus.load_w(0xfffa);
         info!("nmi loaded {}", self.reg.PC);
     }

@@ -64,8 +64,9 @@ fn main() -> Result<(), String> {
     let mut event_pump = sdl_context.event_pump()?;
 
     'main: loop {
-        for i in 0..36000 {
-            cpu.exec(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu));
+        let mut cycles = 0;
+        while 3 * cycles < 89342 {
+            cycles += cpu.exec(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu)) as usize;
         }
         for event in event_pump.poll_iter() {
             if let Event::Quit { .. } = event {
@@ -73,7 +74,7 @@ fn main() -> Result<(), String> {
             }
         }
         let rgbs = ppu.render();
-        texture.update(None, &rgbs, width * 3);
+        texture.update(None, &rgbs, width * 3).unwrap();
         canvas.copy(&texture, None, None)?;
         canvas.present();
         cpu.nmi(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu));
