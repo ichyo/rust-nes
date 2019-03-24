@@ -214,7 +214,7 @@ impl Cpu {
             }
             AddressingMode::ZeroPageY => {
                 let value = bus.load(addr);
-                Operand::Memory(u16::from(value + self.reg.Y))
+                Operand::Memory(u16::from(value.wrapping_add(self.reg.Y)))
             }
             AddressingMode::Absolute => {
                 let value = bus.load_w(addr);
@@ -222,11 +222,11 @@ impl Cpu {
             }
             AddressingMode::AbsoluteX => {
                 let value = bus.load_w(addr);
-                Operand::Memory(value + u16::from(self.reg.X))
+                Operand::Memory(value.wrapping_add(u16::from(self.reg.X)))
             }
             AddressingMode::AbsoluteY => {
                 let value = bus.load_w(addr);
-                Operand::Memory(value + u16::from(self.reg.Y))
+                Operand::Memory(value.wrapping_add(u16::from(self.reg.Y)))
             }
             AddressingMode::Indirect => {
                 let addr = bus.load_w(addr);
