@@ -27,6 +27,7 @@ fn main() {
     let mut bus = Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu);
     //cpu.reset(&mut bus);
     for _ in 0..10000 {
+        cpu.log_trace(&mut bus);
         cpu.exec(&mut bus);
     }
 }

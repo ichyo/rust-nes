@@ -27,9 +27,8 @@ impl Cpu {
 }
 
 impl Cpu {
-    /// Fetches and executes instruction.
-    /// Returns the number of clocks
-    pub fn exec(&mut self, bus: &mut Bus) -> u8 {
+    /// Emit trace log to print next instruction information in nestest format.
+    pub fn log_trace(&self, bus: &mut Bus) {
         let pc = self.reg.PC;
         let inst = self.fetch_instruction(bus);
         let addr = self.fetch_operand(bus, inst.mode);
@@ -107,13 +106,22 @@ impl Cpu {
         );
 
         trace!(
-            "{:04X}  {:8}  {:?} {:26}  {}",
+            "{:04X}  {:8} {}{:?} {:26}  {}",
             pc,
             code,
+            if inst.illegal { "*" } else { " " },
             inst.opcode,
             addr_fmt + &addr_value_fmt,
             reg_fmt,
         );
+    }
+
+    /// Fetches and executes instruction.
+    /// Returns the number of clocks
+    pub fn exec(&mut self, bus: &mut Bus) -> u8 {
+        let inst = self.fetch_instruction(bus);
+        let addr = self.fetch_operand(bus, inst.mode);
+        let inst_bytes = 1 + u16::from(inst.mode.operand_bytes());
 
         self.reg.PC += inst_bytes;
         self.execute_instruction(bus, inst.opcode, addr);
