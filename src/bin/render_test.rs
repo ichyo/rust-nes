@@ -64,17 +64,29 @@ fn main() -> Result<(), String> {
     let mut event_pump = sdl_context.event_pump()?;
 
     'main: loop {
-        let mut cycles = 0;
-        while 3 * cycles < 89342 {
-            cycles += cpu.exec(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu)) as usize;
+        loop {
+            let cycle = cpu.exec(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu)) as usize;
+            let mut vblank_nmi = false;
+            let mut new_frame = false;
+            for _ in 0..3 * cycle {
+                let res = ppu.exec();
+                vblank_nmi |= res.vblank_nmi;
+                new_frame |= res.new_frame;
+            }
+            if new_frame {
+                break;
+            }
+            if vblank_nmi {
+                cpu.nmi(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu));
+            }
         }
         for event in event_pump.poll_iter() {
             if let Event::Quit { .. } = event {
                 break 'main;
             }
         }
-        let rgbs = ppu.render();
-        texture.update(None, &rgbs, width * 3).unwrap();
+        let rgbs = ppu.get_buffer();
+        texture.update(None, rgbs, width * 3).unwrap();
         canvas.copy(&texture, None, None)?;
         canvas.present();
         cpu.nmi(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu));
