@@ -161,6 +161,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             cycles: 2,
             illegal: false,
         },
+        0x0c => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::Absolute,
+            cycles: 4,
+            illegal: true,
+        },
         0x0d => Instruction {
             opcode: Opcode::ORA,
             mode: AddressingMode::Absolute,
@@ -185,6 +191,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             cycles: 5,
             illegal: false,
         },
+        0x14 => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::ZeroPageX,
+            cycles: 4,
+            illegal: true,
+        },
         0x15 => Instruction {
             opcode: Opcode::ORA,
             mode: AddressingMode::ZeroPageX,
@@ -208,6 +220,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             mode: AddressingMode::AbsoluteY,
             cycles: 4,
             illegal: false,
+        },
+        0x1a => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::Implied,
+            cycles: 2,
+            illegal: true,
         },
         0x1d => Instruction {
             opcode: Opcode::ORA,
@@ -299,6 +317,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             cycles: 5,
             illegal: false,
         },
+        0x34 => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::ZeroPageX,
+            cycles: 4,
+            illegal: true,
+        },
         0x35 => Instruction {
             opcode: Opcode::AND,
             mode: AddressingMode::ZeroPageX,
@@ -323,6 +347,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             cycles: 4,
             illegal: false,
         },
+        0x3a => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::Implied,
+            cycles: 2,
+            illegal: true,
+        },
         0x3d => Instruction {
             opcode: Opcode::AND,
             mode: AddressingMode::AbsoluteX,
@@ -346,6 +376,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             mode: AddressingMode::IndirectX,
             cycles: 6,
             illegal: false,
+        },
+        0x44 => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::ZeroPage,
+            cycles: 3,
+            illegal: true,
         },
         0x45 => Instruction {
             opcode: Opcode::EOR,
@@ -407,6 +443,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             cycles: 5,
             illegal: false,
         },
+        0x54 => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::ZeroPageX,
+            cycles: 4,
+            illegal: true,
+        },
         0x55 => Instruction {
             opcode: Opcode::EOR,
             mode: AddressingMode::ZeroPageX,
@@ -431,6 +473,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             cycles: 4,
             illegal: false,
         },
+        0x5a => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::Implied,
+            cycles: 2,
+            illegal: true,
+        },
         0x5d => Instruction {
             opcode: Opcode::EOR,
             mode: AddressingMode::AbsoluteX,
@@ -454,6 +502,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             mode: AddressingMode::IndirectX,
             cycles: 6,
             illegal: false,
+        },
+        0x64 => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::ZeroPage,
+            cycles: 3,
+            illegal: true,
         },
         0x65 => Instruction {
             opcode: Opcode::ADC,
@@ -515,6 +569,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             cycles: 5,
             illegal: false,
         },
+        0x74 => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::ZeroPageX,
+            cycles: 4,
+            illegal: true,
+        },
         0x75 => Instruction {
             opcode: Opcode::ADC,
             mode: AddressingMode::ZeroPageX,
@@ -538,6 +598,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             mode: AddressingMode::AbsoluteY,
             cycles: 4,
             illegal: false,
+        },
+        0x7a => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::Implied,
+            cycles: 2,
+            illegal: true,
         },
         0x7d => Instruction {
             opcode: Opcode::ADC,
@@ -875,6 +941,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             cycles: 5,
             illegal: false,
         },
+        0xd4 => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::ZeroPageX,
+            cycles: 4,
+            illegal: true,
+        },
         0xd5 => Instruction {
             opcode: Opcode::CMP,
             mode: AddressingMode::ZeroPageX,
@@ -898,6 +970,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             mode: AddressingMode::AbsoluteY,
             cycles: 4,
             illegal: false,
+        },
+        0xda => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::Implied,
+            cycles: 2,
+            illegal: true,
         },
         0xdd => Instruction {
             opcode: Opcode::CMP,
@@ -989,6 +1067,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             cycles: 5,
             illegal: false,
         },
+        0xf4 => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::ZeroPageX,
+            cycles: 4,
+            illegal: true,
+        },
         0xf5 => Instruction {
             opcode: Opcode::SBC,
             mode: AddressingMode::ZeroPageX,
@@ -1012,6 +1096,12 @@ fn lookup_instruction(code: u8) -> Instruction {
             mode: AddressingMode::AbsoluteY,
             cycles: 4,
             illegal: false,
+        },
+        0xfa => Instruction {
+            opcode: Opcode::NOP,
+            mode: AddressingMode::Implied,
+            cycles: 2,
+            illegal: true,
         },
         0xfd => Instruction {
             opcode: Opcode::SBC,
