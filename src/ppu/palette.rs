@@ -17,10 +17,12 @@ impl Palettes {
 
     pub fn store(&mut self, addr: u16, value: u8) {
         assert!(addr < 0x20);
-        // Addresses $3F10/$3F14/$3F18/$3F1C
-        // are mirrors of $3F00/$3F04/$3F08/$3F0C.
         self.memory[addr as usize] = value;
-        self.memory[(addr ^ 0x10) as usize] = value;
+        if (addr % 4) == 0 {
+            // Addresses $3F10/$3F14/$3F18/$3F1C
+            // are mirrors of $3F00/$3F04/$3F08/$3F0C.
+            self.memory[(addr ^ 0x10) as usize] = value;
+        }
     }
 
     pub fn get_universal_background_color(&self) -> Rgb {

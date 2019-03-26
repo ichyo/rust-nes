@@ -128,14 +128,16 @@ impl NameTable {
     fn get_pattern_index(&self, x: u16, y: u16) -> u8 {
         let block_x = x / BLOCK_WIDTH;
         let block_y = y / BLOCK_HEIGHT;
-        let addr = block_x + block_y * (TABLE_WIDTH / BLOCK_WIDTH);
+        let pitch = TABLE_WIDTH / BLOCK_WIDTH;
+        let addr = block_x + block_y * pitch;
         self.memory[addr as usize]
     }
 
     fn get_palette_index(&self, x: u16, y: u16) -> u8 {
         let attr_x = x / ATTRIBUTE_BLOCK_WIDTH;
         let attr_y = y / ATTRIBUTE_BLOCK_HEIGHT;
-        let attr_index = attr_x + attr_y * (TABLE_WIDTH / ATTRIBUTE_BLOCK_WIDTH);
+        let pitch = TABLE_WIDTH / ATTRIBUTE_BLOCK_WIDTH;
+        let attr_index = attr_x + attr_y * pitch;
         let addr = NAME_TABLE_SIZE + attr_index;
         let shift = match (
             x < ATTRIBUTE_BLOCK_WIDTH / 2,
