@@ -23,12 +23,22 @@ impl Palettes {
         self.memory[(addr ^ 0x10) as usize] = value;
     }
 
+    pub fn get_universal_background_color(&self) -> Rgb {
+        COLORS[self.memory[0] as usize]
+    }
+
     pub fn get_background_color(&self, palette_index: u8, color_index: u8) -> Rgb {
+        if color_index == 0 {
+            return self.get_universal_background_color();
+        }
         let addr = palette_index * 4 + color_index;
         COLORS[self.memory[addr as usize] as usize]
     }
 
     pub fn get_sprite_color(&self, palette_index: u8, color_index: u8) -> Rgb {
+        if color_index == 0 {
+            return self.get_universal_background_color();
+        }
         let addr = 0x10 + palette_index * 4 + color_index;
         COLORS[self.memory[addr as usize] as usize]
     }

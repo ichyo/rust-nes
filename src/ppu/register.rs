@@ -1,3 +1,5 @@
+use super::pattern::PatternTableSide;
+
 #[derive(Debug)]
 pub struct PPUCtrl {
     value: u8,
@@ -18,7 +20,7 @@ impl PPUCtrl {
         PPUCtrl { value: 0 }
     }
 
-    pub fn get_addr_incr(&self) -> u8 {
+    pub fn addr_incr(&self) -> u8 {
         if (self.value & 0x4) == 0 {
             1
         } else {
@@ -26,8 +28,16 @@ impl PPUCtrl {
         }
     }
 
-    pub fn get_vblank_nmi(&self) -> bool {
+    pub fn vblank_nmi(&self) -> bool {
         (self.value & 0x80) != 0
+    }
+
+    pub fn background_table(&self) -> PatternTableSide {
+        if (self.value & 0x10) != 0 {
+            PatternTableSide::Right
+        } else {
+            PatternTableSide::Left
+        }
     }
 
     pub fn set_u8(&mut self, value: u8) {
@@ -38,6 +48,14 @@ impl PPUCtrl {
 impl PPUMask {
     pub fn new() -> PPUMask {
         PPUMask { value: 0 }
+    }
+
+    pub fn gray_scale(&self) -> bool {
+        (self.value & 0x1) != 0
+    }
+
+    pub fn show_background(&self) -> bool {
+        (self.value & 0x8) != 0
     }
 
     pub fn set_u8(&mut self, value: u8) {

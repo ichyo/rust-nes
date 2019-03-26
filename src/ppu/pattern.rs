@@ -2,6 +2,11 @@ pub struct PatternTable {
     memory: [u8; 0x2000],
 }
 
+pub enum PatternTableSide {
+    Left,
+    Right,
+}
+
 impl PatternTable {
     pub fn new(chr_rom: &[u8]) -> PatternTable {
         assert_eq!(chr_rom.len(), 0x2000);
@@ -14,7 +19,7 @@ impl PatternTable {
         self.memory[addr as usize]
     }
 
-    fn get_value(&self, index: u16, x: u8, y: u8) -> u8 {
+    fn get_value_impl(&self, index: u16, x: u8, y: u8) -> u8 {
         assert!(x < 8);
         assert!(y < 8);
         let base = (index * 16) as usize;
@@ -24,10 +29,17 @@ impl PatternTable {
     }
 
     pub fn get_left_value(&self, index: u8, x: u8, y: u8) -> u8 {
-        self.get_value(u16::from(index), x, y)
+        self.get_value_impl(u16::from(index), x, y)
     }
 
     pub fn get_right_value(&self, index: u8, x: u8, y: u8) -> u8 {
-        self.get_value(u16::from(index) + 0x100, x, y)
+        self.get_value_impl(u16::from(index) + 0x100, x, y)
+    }
+
+    pub fn get_value(&self, side: PatternTableSide, index: u8, x: u8, y: u8) -> u8 {
+        match side {
+            PatternTableSide::Left => self.get_left_value(index, x, y),
+            PatternTableSide::Right => self.get_right_value(index, x, y),
+        }
     }
 }

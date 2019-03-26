@@ -67,7 +67,7 @@ impl Ppu {
         }
         if self.scanline == WINDOW_HEIGHT as u16 {
             self.reg_status.set_vblank(true);
-            if self.reg_ctrl.get_vblank_nmi() {
+            if self.reg_ctrl.vblank_nmi() {
                 result.vblank_nmi = true;
             }
         }
@@ -82,12 +82,18 @@ impl Ppu {
     }
 
     fn render_line(&mut self, y: usize) {
+        if !self.reg_mask.show_background() {
+            return;
+        }
         for x in 0..WINDOW_WIDTH {
             let pattern_index = self.name_table.get_pattern_index(x as u16, y as u16);
             let palette_index = self.name_table.get_palette_index(x as u16, y as u16);
-            let sprite_value =
-                self.pattern_table
-                    .get_right_value(pattern_index, (x % 8) as u8, (y % 8) as u8);
+            let sprite_value = self.pattern_table.get_value(
+                self.reg_ctrl.background_table(),
+                pattern_index,
+                (x % 8) as u8,
+                (y % 8) as u8,
+            );
             let rgb = self
                 .palette_table
                 .get_background_color(palette_index, sprite_value);
@@ -135,7 +141,7 @@ impl Ppu {
             0x03...0x06 => 0,
             0x07 => {
                 let result = self.load_vram(self.vram_addr);
-                self.vram_addr += u16::from(self.reg_ctrl.get_addr_incr());
+                self.vram_addr += u16::from(self.reg_ctrl.addr_incr());
                 result
             }
             0x08...0xffff => panic!("Unknown address {}", addr),
@@ -162,7 +168,7 @@ impl Ppu {
             0x06 => {} // TODO: unexpected?
             0x07 => {
                 self.store_vram(self.vram_addr, val);
-                self.vram_addr += u16::from(self.reg_ctrl.get_addr_incr());
+                self.vram_addr += u16::from(self.reg_ctrl.addr_incr());
             }
             0x08...0xffff => panic!("Unknown address {}", addr),
         };
