@@ -12,7 +12,7 @@ use std::io::prelude::*;
 
 fn main() -> Result<(), String> {
     env_logger::Builder::new()
-        .filter(None, log::LevelFilter::Trace)
+        .filter(None, log::LevelFilter::Debug)
         .init();
 
     let path = env::args().nth(1).expect("please specify the path to nes");

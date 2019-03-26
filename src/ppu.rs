@@ -182,18 +182,22 @@ impl Ppu {
             0x2000...0x2fff => self.name_table.load(addr - 0x2000),
             0x3000...0x3eff => self.name_table.load(addr - 0x3000),
             0x3f00...0x3fff => self.palette_table.load(addr & 0x1f),
-            0x4000...0xffff => self.load_vram(addr & 0x3fff), // TODO: is this correct?
+            0x4000...0xffff => {
+                // TODO: is this correct?
+                warn!("out of address {:04x}", addr);
+                0
+            }
         }
     }
 
     fn store_vram(&mut self, addr: u16, val: u8) {
         trace!("Store(vram) addr = {:#x} val = {:#x}", addr, val);
         match addr {
-            0x0000...0x1fff => error!("it doesn't support to write to pattern table"),
+            0x0000...0x1fff => warn!("it doesn't support to write to pattern table {:04X}", addr),
             0x2000...0x2fff => self.name_table.store(addr - 0x2000, val),
             0x3000...0x3eff => self.name_table.store(addr - 0x3000, val),
             0x3f00...0x3fff => self.palette_table.store(addr & 0x1f, val),
-            0x4000...0xffff => self.store_vram(addr & 0x3fff, val), // TODO: is this correct?
+            0x4000...0xffff => warn!("out of address {:04x} {:02x}", addr, val), // TODO: is this correct?
         }
     }
 }
