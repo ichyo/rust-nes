@@ -1,11 +1,14 @@
+#[derive(Debug)]
 pub struct PPUCtrl {
     value: u8,
 }
 
+#[derive(Debug)]
 pub struct PPUMask {
     value: u8,
 }
 
+#[derive(Debug)]
 pub struct PPUStatus {
     value: u8,
 }
@@ -48,11 +51,19 @@ impl PPUStatus {
     }
 
     pub fn set_sprite_0_hit(&mut self, value: bool) {
-        self.value = (self.value & !(1 << 6)) | ((self.value as u8) << 6);
+        if value {
+            self.value |= 1 << 6;
+        } else {
+            self.value &= !(1 << 6);
+        }
     }
 
     pub fn set_vblank(&mut self, value: bool) {
-        self.value = (self.value & !(1 << 7)) | ((self.value as u8) << 7);
+        if value {
+            self.value |= 1 << 7;
+        } else {
+            self.value &= !(1 << 7);
+        }
     }
 
     pub fn to_u8(&self) -> u8 {

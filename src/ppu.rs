@@ -77,7 +77,7 @@ impl Ppu {
             result.new_frame = true;
         }
 
-        self.scanline = (self.scanline + 1) % TOTAL_CYCLES_IN_LINE;
+        self.scanline = (self.scanline + 1) % TOTAL_SCANLINE;
         result
     }
 
@@ -87,7 +87,7 @@ impl Ppu {
             let palette_index = self.name_table.get_palette_index(x as u16, y as u16);
             let sprite_value =
                 self.pattern_table
-                    .get_left_value(pattern_index, (x % 8) as u8, (y % 8) as u8);
+                    .get_right_value(pattern_index, (x % 8) as u8, (y % 8) as u8);
             let rgb = self
                 .palette_table
                 .get_background_color(palette_index, sprite_value);
@@ -176,7 +176,7 @@ impl Ppu {
             0x2000...0x2fff => self.name_table.load(addr - 0x2000),
             0x3000...0x3eff => self.name_table.load(addr - 0x3000),
             0x3f00...0x3fff => self.palette_table.load(addr & 0x1f),
-            0x4000...0xffff => unreachable!(),
+            0x4000...0xffff => self.load_vram(addr & 0x3fff), // TODO: is this correct?
         }
     }
 
@@ -187,7 +187,7 @@ impl Ppu {
             0x2000...0x2fff => self.name_table.store(addr - 0x2000, val),
             0x3000...0x3eff => self.name_table.store(addr - 0x3000, val),
             0x3f00...0x3fff => self.palette_table.store(addr & 0x1f, val),
-            0x4000...0xffff => unreachable!(),
+            0x4000...0xffff => self.store_vram(addr & 0x3fff, val), // TODO: is this correct?
         }
     }
 }

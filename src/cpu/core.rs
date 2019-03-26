@@ -127,6 +127,7 @@ impl Cpu {
     pub fn exec(&mut self, bus: &mut Bus) -> u8 {
         let inst = self.fetch_instruction(bus);
         let addr = self.fetch_operand(bus, inst.mode);
+        trace!("{:04X} {:?} {:?}", self.reg.PC, inst.opcode, addr);
         let inst_bytes = 1 + u16::from(inst.mode.operand_bytes());
 
         self.reg.PC += inst_bytes;

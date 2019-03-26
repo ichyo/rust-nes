@@ -89,7 +89,6 @@ fn main() -> Result<(), String> {
         texture.update(None, rgbs, width * 3).unwrap();
         canvas.copy(&texture, None, None)?;
         canvas.present();
-        cpu.nmi(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu));
     }
 
     Ok(())
