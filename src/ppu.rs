@@ -22,6 +22,7 @@ pub struct Ppu {
     last_store: (u16, u8),
     scanline: u16,
     cycles_in_line: u16,
+    ppudata_buffer: u8,
     render_buffer: [u8; WINDOW_HEIGHT * WINDOW_WIDTH * 3],
 }
 
@@ -121,6 +122,7 @@ impl Ppu {
             palette_table: Palettes::new(),
             scanline: 0,
             cycles_in_line: 0,
+            ppudata_buffer: 0,
             render_buffer: [0; WINDOW_HEIGHT * WINDOW_WIDTH * 3],
         }
     }
@@ -140,8 +142,14 @@ impl Ppu {
             0x02 => self.reg_status.to_u8(),
             0x03...0x06 => 0,
             0x07 => {
-                let result = self.load_vram(self.vram_addr);
+                let buf_result = self.ppudata_buffer;
+                let new_result = self.load_vram(self.vram_addr);
+                let result = match self.vram_addr {
+                    0x3f00...0x3fff => new_result,
+                    _ => buf_result,
+                };
                 self.vram_addr += u16::from(self.reg_ctrl.addr_incr());
+                self.ppudata_buffer = new_result;
                 result
             }
             0x08...0xffff => panic!("Unknown address {}", addr),
@@ -182,11 +190,7 @@ impl Ppu {
             0x2000...0x2fff => self.name_table.load(addr - 0x2000),
             0x3000...0x3eff => self.name_table.load(addr - 0x3000),
             0x3f00...0x3fff => self.palette_table.load(addr & 0x1f),
-            0x4000...0xffff => {
-                // TODO: is this correct?
-                warn!("out of address {:04x}", addr);
-                0
-            }
+            0x4000...0xffff => unreachable!(),
         }
     }
 
@@ -197,7 +201,7 @@ impl Ppu {
             0x2000...0x2fff => self.name_table.store(addr - 0x2000, val),
             0x3000...0x3eff => self.name_table.store(addr - 0x3000, val),
             0x3f00...0x3fff => self.palette_table.store(addr & 0x1f, val),
-            0x4000...0xffff => warn!("out of address {:04x} {:02x}", addr, val), // TODO: is this correct?
+            0x4000...0xffff => unreachable!(),
         }
     }
 }
