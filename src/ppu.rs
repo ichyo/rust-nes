@@ -139,7 +139,11 @@ impl Ppu {
                 warn!("It doesn't support load mask register (0x01)");
                 0
             }
-            0x02 => self.reg_status.to_u8(),
+            0x02 => {
+                let status = self.reg_status.to_u8();
+                self.reg_status.set_vblank(false);
+                status
+            }
             0x03...0x06 => 0,
             0x07 => {
                 let buf_result = self.ppudata_buffer;
