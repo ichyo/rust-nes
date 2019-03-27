@@ -140,8 +140,8 @@ impl NameTable {
         let attr_index = attr_x + attr_y * pitch;
         let addr = NAME_TABLE_SIZE + attr_index;
         let shift = match (
-            x < ATTRIBUTE_BLOCK_WIDTH / 2,
-            y < ATTRIBUTE_BLOCK_HEIGHT / 2,
+            x % ATTRIBUTE_BLOCK_WIDTH < ATTRIBUTE_BLOCK_WIDTH / 2,
+            y % ATTRIBUTE_BLOCK_HEIGHT < ATTRIBUTE_BLOCK_HEIGHT / 2,
         ) {
             (true, true) => 0,
             (false, true) => 2,
