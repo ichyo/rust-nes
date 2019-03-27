@@ -177,7 +177,7 @@ impl Ppu {
             0x06 if self.last_store.0 == 0x06 => {
                 self.vram_addr = (u16::from(self.last_store.1) << 8) | u16::from(val);
             }
-            0x06 => {} // TODO: unexpected?
+            0x06 => {}
             0x07 => {
                 self.store_vram(self.vram_addr, val);
                 self.vram_addr += u16::from(self.reg_ctrl.addr_incr());
