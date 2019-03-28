@@ -60,11 +60,13 @@ impl NameTables {
     }
 
     pub fn get_pattern_index(&self, x: u16, y: u16) -> u8 {
+        let (x, y) = (x % (2 * TABLE_WIDTH), y % (2 * TABLE_HEIGHT));
         self.get_table(Screen::from_coord(x, y))
             .get_pattern_index(x % TABLE_WIDTH, y % TABLE_HEIGHT)
     }
 
     pub fn get_palette_index(&self, x: u16, y: u16) -> u8 {
+        let (x, y) = (x % (2 * TABLE_WIDTH), y % (2 * TABLE_HEIGHT));
         self.get_table(Screen::from_coord(x, y))
             .get_palette_index(x % TABLE_WIDTH, y % TABLE_HEIGHT)
     }

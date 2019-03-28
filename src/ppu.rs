@@ -23,6 +23,7 @@ pub struct Ppu {
     vram_addr: u16,
     oam_data: [u8; 0x100],
     oam_addr: u8,
+    scroll: (u8, u8),
     last_store: (u16, u8),
     scanline: u16,
     cycles_in_line: u16,
@@ -140,12 +141,10 @@ impl Ppu {
         if !self.reg_mask.show_background() {
             return None;
         }
-        let pattern_index = self
-            .name_table
-            .get_pattern_index(u16::from(x), u16::from(y));
-        let palette_index = self
-            .name_table
-            .get_palette_index(u16::from(x), u16::from(y));
+        let (scroll_x, scroll_y) = self.get_scroll();
+        let (x, y) = (scroll_x + u16::from(x), scroll_y + u16::from(y));
+        let pattern_index = self.name_table.get_pattern_index(x, y);
+        let palette_index = self.name_table.get_palette_index(x, y);
         let sprite_value = self
             .pattern_tables
             .get_table(self.reg_ctrl.background_table())
@@ -162,6 +161,16 @@ impl Ppu {
             .collect::<Vec<Sprite>>()
     }
 
+    fn get_scroll(&self) -> (u16, u16) {
+        let (low_x, low_y) = self.scroll;
+        let high_x = self.reg_ctrl.scroll_x_bit8();
+        let high_y = self.reg_ctrl.scroll_y_bit8();
+        (
+            (u16::from(high_x) << 8) | u16::from(low_x),
+            (u16::from(high_y) << 8) | u16::from(low_y),
+        )
+    }
+
     /// Create PPU from cartridge
     pub fn from_cartridge(cartridge: &Cartridge) -> Ppu {
         Ppu::new(&cartridge.chr_rom)
@@ -176,6 +185,7 @@ impl Ppu {
             vram_addr: 0,
             oam_data: [0; 0x100],
             oam_addr: 0,
+            scroll: (0, 0),
             pattern_tables: PatternTables::new(chr_rom),
             name_table: NameTables::new(),
             palette_table: Palettes::new(),
@@ -256,7 +266,13 @@ impl Ppu {
                 // See https://wiki.nesdev.com/w/index.php/PPU_registers#OAMDATA
                 self.write_oam(val);
             }
-            0x05 => {}
+            0x05 => {
+                // TODO: What if it's during rendering?
+                // https://wiki.nesdev.com/w/index.php/PPU_registers#Scroll_.28.242005.29_.3E.3E_write_x2
+                if let (0x05, x) = self.last_store {
+                    self.scroll = (x, val);
+                }
+            }
             0x06 => {
                 if let (0x06, high) = self.last_store {
                     self.vram_addr = (u16::from(high) << 8) | u16::from(val);

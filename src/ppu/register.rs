@@ -32,6 +32,14 @@ impl PPUCtrl {
         (self.value & 0x80) != 0
     }
 
+    pub fn scroll_x_bit8(&self) -> u8 {
+        (self.value & 0x01)
+    }
+
+    pub fn scroll_y_bit8(&self) -> u8 {
+        ((self.value >> 1) & 0x01)
+    }
+
     pub fn background_table(&self) -> PatternTableSide {
         if (self.value & 0x10) != 0 {
             PatternTableSide::Right
