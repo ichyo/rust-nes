@@ -5,7 +5,7 @@ mod register;
 
 use crate::cartridge::Cartridge;
 use background::NameTables;
-use log::{error, trace, warn};
+use log::{trace, warn};
 use palette::Palettes;
 use pattern::PatternTable;
 use register::{PPUCtrl, PPUMask, PPUStatus};
@@ -19,6 +19,8 @@ pub struct Ppu {
     name_table: NameTables,
     palette_table: Palettes,
     vram_addr: u16,
+    oam_data: [u8; 0x100],
+    oam_addr: u8,
     last_store: (u16, u8),
     scanline: u16,
     cycles_in_line: u16,
@@ -117,6 +119,8 @@ impl Ppu {
             reg_status: PPUStatus::new(),
             last_store: (0, 0),
             vram_addr: 0,
+            oam_data: [0; 0x100],
+            oam_addr: 0,
             pattern_table: PatternTable::new(chr_rom),
             name_table: NameTables::new(),
             palette_table: Palettes::new(),
@@ -144,7 +148,23 @@ impl Ppu {
                 self.reg_status.set_vblank(false);
                 status
             }
-            0x03...0x06 => 0,
+            0x03 => {
+                warn!("It doesn't support load oam addr (0x03)");
+                0
+            }
+            0x04 => {
+                // TODO: The actual behavior is much more complex.
+                // See https://wiki.nesdev.com/w/index.php/PPU_registers#OAMDATA
+                self.oam_data[self.oam_addr as usize]
+            }
+            0x05 => {
+                warn!("It doesn't support load ppu scroll (0x05)");
+                0
+            }
+            0x06 => {
+                warn!("It doesn't support load ppu addr (0x06)");
+                0
+            }
             0x07 => {
                 let buf_result = self.ppudata_buffer;
                 let new_result = self.load_vram(self.vram_addr);
@@ -173,11 +193,20 @@ impl Ppu {
             0x02 => {
                 warn!("It doesn't support write to status register");
             }
-            0x03...0x05 => {}
-            0x06 if self.last_store.0 == 0x06 => {
-                self.vram_addr = (u16::from(self.last_store.1) << 8) | u16::from(val);
+            0x03 => {
+                self.oam_addr = val;
             }
-            0x06 => {}
+            0x04 => {
+                // TODO: The actual behavior is much more complex.
+                // See https://wiki.nesdev.com/w/index.php/PPU_registers#OAMDATA
+                self.write_oam(val);
+            }
+            0x05 => {}
+            0x06 => {
+                if let (0x06, high) = self.last_store {
+                    self.vram_addr = (u16::from(high) << 8) | u16::from(val);
+                }
+            }
             0x07 => {
                 self.store_vram(self.vram_addr, val);
                 self.vram_addr += u16::from(self.reg_ctrl.addr_incr());
@@ -185,6 +214,12 @@ impl Ppu {
             0x08...0xffff => panic!("Unknown address {}", addr),
         };
         self.last_store = (addr, val);
+    }
+
+    /// Write value to OAM. Increment OAM address.
+    pub fn write_oam(&mut self, val: u8) {
+        self.oam_data[self.oam_addr as usize] = val;
+        self.oam_addr = self.oam_addr.wrapping_add(1);
     }
 
     fn load_vram(&self, addr: u16) -> u8 {

@@ -2,6 +2,7 @@ use nes::apu::Apu;
 use nes::bus::Bus;
 use nes::cartridge::Cartridge;
 use nes::cpu::Cpu;
+use nes::dma::Dma;
 use nes::memory::Memory;
 use nes::ppu::Ppu;
 use sdl2::event::Event;
@@ -24,8 +25,11 @@ fn main() -> Result<(), String> {
     let mut apu = Apu::new();
     let mut ppu = Ppu::from_cartridge(&cartridge);
     let mut cpu = Cpu::new();
+    let mut dma = Dma::new();
 
-    cpu.reset(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu));
+    cpu.reset(&mut Bus::new(
+        &cartridge, &mut wram, &mut ppu, &mut apu, &mut dma,
+    ));
 
     let height = 240;
     let width = 256;
@@ -65,10 +69,14 @@ fn main() -> Result<(), String> {
 
     'main: loop {
         loop {
-            let cycle = cpu.exec(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu)) as usize;
+            let cycle = cpu.exec(&mut Bus::new(
+                &cartridge, &mut wram, &mut ppu, &mut apu, &mut dma,
+            )) as usize;
+            let steal = dma.transfer(&wram, &mut ppu) as usize;
+
             let mut vblank_nmi = false;
             let mut new_frame = false;
-            for _ in 0..3 * cycle {
+            for _ in 0..3 * (cycle + steal) {
                 let res = ppu.exec();
                 vblank_nmi |= res.vblank_nmi;
                 new_frame |= res.new_frame;
@@ -77,7 +85,9 @@ fn main() -> Result<(), String> {
                 break;
             }
             if vblank_nmi {
-                cpu.nmi(&mut Bus::new(&cartridge, &mut wram, &mut ppu, &mut apu));
+                cpu.nmi(&mut Bus::new(
+                    &cartridge, &mut wram, &mut ppu, &mut apu, &mut dma,
+                ));
             }
         }
         for event in event_pump.poll_iter() {

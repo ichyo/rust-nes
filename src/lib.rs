@@ -11,6 +11,8 @@ pub mod bus;
 pub mod cartridge;
 /// processor
 pub mod cpu;
+/// transfer whole data from ram to PPU OAM
+pub mod dma;
 /// volatile memory
 pub mod memory;
 /// picture processing unit

@@ -1,5 +1,6 @@
 use crate::apu::Apu;
 use crate::cartridge::Cartridge;
+use crate::dma::Dma;
 use crate::memory::Memory;
 use crate::ppu::Ppu;
 
@@ -9,6 +10,7 @@ pub struct Bus<'a> {
     wram: &'a mut Memory,
     ppu: &'a mut Ppu,
     apu: &'a mut Apu,
+    dma: &'a mut Dma,
 }
 
 impl<'a> Bus<'a> {
@@ -18,12 +20,14 @@ impl<'a> Bus<'a> {
         wram: &'a mut Memory,
         ppu: &'a mut Ppu,
         apu: &'a mut Apu,
+        dma: &'a mut Dma,
     ) -> Bus<'a> {
         Bus {
             cartridge,
             wram,
             ppu,
             apu,
+            dma,
         }
     }
 
@@ -44,7 +48,8 @@ impl<'a> Bus<'a> {
         match addr {
             0x0000...0x1fff => self.wram.store(addr & 0x7ff, val), // TODO: correct for mirror mode?
             0x2000...0x3fff => self.ppu.store((addr - 0x2000) & 0x7, val),
-            0x4000...0x4015 | 0x4018...0x401f => self.apu.store(addr - 0x4000, val),
+            0x4014 => self.dma.write(val),
+            0x4000...0x4013 | 0x4015 | 0x4018...0x401f => self.apu.store(addr - 0x4000, val),
             0x4016 | 0x4017 => {} // TODO: implement key pad
             0x4020...0xffff => panic!("not implemented to set {:#x} at address {:#x}", val, addr),
         };
