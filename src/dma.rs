@@ -7,6 +7,7 @@ pub struct Dma {
     high: Option<u8>,
 }
 
+// TODO: the cycle is different depending on whether cpu cycle is odd or even.
 const DMA_CYCLES: u16 = 514;
 
 impl Dma {

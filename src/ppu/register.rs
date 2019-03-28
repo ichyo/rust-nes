@@ -40,6 +40,14 @@ impl PPUCtrl {
         }
     }
 
+    pub fn sprite_table(&self) -> PatternTableSide {
+        if (self.value & 0x08) != 0 {
+            PatternTableSide::Right
+        } else {
+            PatternTableSide::Left
+        }
+    }
+
     pub fn set_u8(&mut self, value: u8) {
         self.value = value;
     }
@@ -56,6 +64,10 @@ impl PPUMask {
 
     pub fn show_background(&self) -> bool {
         (self.value & 0x8) != 0
+    }
+
+    pub fn show_sprite(&self) -> bool {
+        (self.value & 0x10) != 0
     }
 
     pub fn set_u8(&mut self, value: u8) {

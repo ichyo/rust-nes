@@ -2,20 +2,22 @@ mod background;
 mod palette;
 mod pattern;
 mod register;
+mod sprite;
 
 use crate::cartridge::Cartridge;
 use background::NameTables;
 use log::{trace, warn};
-use palette::Palettes;
-use pattern::PatternTable;
+use palette::{Palettes, Rgb};
+use pattern::PatternTables;
 use register::{PPUCtrl, PPUMask, PPUStatus};
+use sprite::Sprite;
 
 /// Picture Processing Unit. handle graphics.
 pub struct Ppu {
     reg_ctrl: PPUCtrl,
     reg_mask: PPUMask,
     reg_status: PPUStatus,
-    pattern_table: PatternTable,
+    pattern_tables: PatternTables,
     name_table: NameTables,
     palette_table: Palettes,
     vram_addr: u16,
@@ -66,7 +68,7 @@ impl Ppu {
         }
 
         if self.scanline < WINDOW_HEIGHT as u16 {
-            self.render_line(self.scanline as usize);
+            self.render_line(self.scanline as u8);
         }
         if self.scanline == WINDOW_HEIGHT as u16 {
             self.reg_status.set_vblank(true);
@@ -84,27 +86,80 @@ impl Ppu {
         result
     }
 
-    fn render_line(&mut self, y: usize) {
-        if !self.reg_mask.show_background() {
-            return;
-        }
+    fn render_line(&mut self, y: u8) {
+        // TODO: Use sprite priorities
         for x in 0..WINDOW_WIDTH {
-            let pattern_index = self.name_table.get_pattern_index(x as u16, y as u16);
-            let palette_index = self.name_table.get_palette_index(x as u16, y as u16);
-            let sprite_value = self.pattern_table.get_value(
-                self.reg_ctrl.background_table(),
-                pattern_index,
-                (x % 8) as u8,
-                (y % 8) as u8,
+            let sprite0 = Sprite::new(&self.oam_data[0..4]);
+            let sprite0_color = sprite0.get_color(
+                x as u8,
+                y as u8,
+                self.pattern_tables.get_table(self.reg_ctrl.sprite_table()),
+                &self.palette_table,
             );
+            let bg_color = self.get_background_color(x as u8, y);
+
+            // TODO: sprite 0 condition is more complex.
+            // See https://wiki.nesdev.com/w/index.php/PPU_OAM#Sprite_zero_hits<Paste>
+            if let (Some(_), Some(_)) = (sprite0_color, bg_color) {
+                self.reg_status.set_sprite_0_hit(true);
+            }
+
             let rgb = self
-                .palette_table
-                .get_background_color(palette_index, sprite_value);
-            let index = 3 * (x + y * WINDOW_WIDTH);
+                .get_sprite_color(x as u8, y)
+                .or(bg_color)
+                .unwrap_or_else(|| self.palette_table.get_universal_background_color());
+            let index = 3 * (x + y as usize * WINDOW_WIDTH);
             self.render_buffer[index] = rgb.r;
             self.render_buffer[index + 1] = rgb.g;
             self.render_buffer[index + 2] = rgb.b;
         }
+    }
+
+    fn get_sprite_color(&self, x: u8, y: u8) -> Option<Rgb> {
+        // TODO: Read mask for
+        // "Show sprites in leftmost 8 pixels of screen, 0: Hide"
+        if !self.reg_mask.show_sprite() {
+            return None;
+        }
+        self.get_sprites()
+            .into_iter()
+            .filter_map(|s| {
+                s.get_color(
+                    x,
+                    y,
+                    &self.pattern_tables.get_table(self.reg_ctrl.sprite_table()),
+                    &self.palette_table,
+                )
+            })
+            .next()
+    }
+
+    fn get_background_color(&self, x: u8, y: u8) -> Option<Rgb> {
+        // TODO: Read mask for
+        // "Show sprites in leftmost 8 pixels of screen, 0: Hide"
+        if !self.reg_mask.show_background() {
+            return None;
+        }
+        let pattern_index = self
+            .name_table
+            .get_pattern_index(u16::from(x), u16::from(y));
+        let palette_index = self
+            .name_table
+            .get_palette_index(u16::from(x), u16::from(y));
+        let sprite_value = self
+            .pattern_tables
+            .get_table(self.reg_ctrl.background_table())
+            .get_value(pattern_index, (x % 8) as u8, (y % 8) as u8);
+        let rgb = self
+            .palette_table
+            .get_background_color(palette_index, sprite_value);
+        Some(rgb)
+    }
+
+    fn get_sprites(&self) -> Vec<Sprite> {
+        (0..64)
+            .map(|idx| Sprite::new(&self.oam_data[idx * 4..(idx + 1) * 4]))
+            .collect::<Vec<Sprite>>()
     }
 
     /// Create PPU from cartridge
@@ -121,7 +176,7 @@ impl Ppu {
             vram_addr: 0,
             oam_data: [0; 0x100],
             oam_addr: 0,
-            pattern_table: PatternTable::new(chr_rom),
+            pattern_tables: PatternTables::new(chr_rom),
             name_table: NameTables::new(),
             palette_table: Palettes::new(),
             scanline: 0,
@@ -225,7 +280,7 @@ impl Ppu {
     fn load_vram(&self, addr: u16) -> u8 {
         trace!("Load(vram) addr={:#x}", addr);
         match addr {
-            0x0000...0x1fff => self.pattern_table.load(addr),
+            0x0000...0x1fff => self.pattern_tables.load(addr),
             0x2000...0x2fff => self.name_table.load(addr - 0x2000),
             0x3000...0x3eff => self.name_table.load(addr - 0x3000),
             0x3f00...0x3fff => self.palette_table.load(addr & 0x1f),
