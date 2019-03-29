@@ -3,13 +3,29 @@ use nes::bus::Bus;
 use nes::cartridge::Cartridge;
 use nes::cpu::Cpu;
 use nes::dma::Dma;
+use nes::joypad::{JoyPad, Key};
 use nes::memory::Memory;
 use nes::ppu::Ppu;
 use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
+
+fn joypad_key(keycode: Keycode) -> Option<Key> {
+    match keycode {
+        Keycode::Return => Some(Key::Start),
+        Keycode::RShift => Some(Key::Select),
+        Keycode::Z => Some(Key::A),
+        Keycode::X => Some(Key::B),
+        Keycode::Up => Some(Key::Up),
+        Keycode::Down => Some(Key::Down),
+        Keycode::Left => Some(Key::Left),
+        Keycode::Right => Some(Key::Right),
+        _ => None,
+    }
+}
 
 fn main() -> Result<(), String> {
     env_logger::Builder::new()
@@ -25,10 +41,16 @@ fn main() -> Result<(), String> {
     let mut apu = Apu::new();
     let mut ppu = Ppu::from_cartridge(&cartridge);
     let mut cpu = Cpu::new();
+    let mut joypad = JoyPad::new();
     let mut dma = Dma::new();
 
     cpu.reset(&mut Bus::new(
-        &cartridge, &mut wram, &mut ppu, &mut apu, &mut dma,
+        &cartridge,
+        &mut wram,
+        &mut ppu,
+        &mut apu,
+        &mut joypad,
+        &mut dma,
     ));
 
     let height = 240;
@@ -70,7 +92,12 @@ fn main() -> Result<(), String> {
     'main: loop {
         loop {
             let cycle = cpu.exec(&mut Bus::new(
-                &cartridge, &mut wram, &mut ppu, &mut apu, &mut dma,
+                &cartridge,
+                &mut wram,
+                &mut ppu,
+                &mut apu,
+                &mut joypad,
+                &mut dma,
             )) as usize;
             let steal = dma.transfer(&wram, &mut ppu) as usize;
 
@@ -86,11 +113,36 @@ fn main() -> Result<(), String> {
             }
             if vblank_nmi {
                 cpu.nmi(&mut Bus::new(
-                    &cartridge, &mut wram, &mut ppu, &mut apu, &mut dma,
+                    &cartridge,
+                    &mut wram,
+                    &mut ppu,
+                    &mut apu,
+                    &mut joypad,
+                    &mut dma,
                 ));
             }
         }
         for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. } => break 'main,
+                Event::KeyDown {
+                    keycode: Some(keycode),
+                    ..
+                } => {
+                    if let Some(key) = joypad_key(keycode) {
+                        joypad.press(key);
+                    }
+                }
+                Event::KeyUp {
+                    keycode: Some(keycode),
+                    ..
+                } => {
+                    if let Some(key) = joypad_key(keycode) {
+                        joypad.release(key);
+                    }
+                }
+                _ => {}
+            }
             if let Event::Quit { .. } = event {
                 break 'main;
             }

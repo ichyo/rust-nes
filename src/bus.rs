@@ -1,6 +1,7 @@
 use crate::apu::Apu;
 use crate::cartridge::Cartridge;
 use crate::dma::Dma;
+use crate::joypad::JoyPad;
 use crate::memory::Memory;
 use crate::ppu::Ppu;
 
@@ -10,6 +11,7 @@ pub struct Bus<'a> {
     wram: &'a mut Memory,
     ppu: &'a mut Ppu,
     apu: &'a mut Apu,
+    joypad: &'a mut JoyPad,
     dma: &'a mut Dma,
 }
 
@@ -20,6 +22,7 @@ impl<'a> Bus<'a> {
         wram: &'a mut Memory,
         ppu: &'a mut Ppu,
         apu: &'a mut Apu,
+        joypad: &'a mut JoyPad,
         dma: &'a mut Dma,
     ) -> Bus<'a> {
         Bus {
@@ -27,6 +30,7 @@ impl<'a> Bus<'a> {
             wram,
             ppu,
             apu,
+            joypad,
             dma,
         }
     }
@@ -37,7 +41,8 @@ impl<'a> Bus<'a> {
             0x0000...0x1fff => self.wram.load(addr & 0x07ff),
             0x2000...0x3fff => self.ppu.load((addr - 0x2000) & 0x7),
             0x4000...0x4015 | 0x4018...0x401f => self.apu.load(addr - 0x4000),
-            0x4016 | 0x4017 => 0, // TODO: implement key pad
+            0x4016 => self.joypad.load(),
+            0x4017 => 0, // TODO: implement joy pad 2
             0x4020...0x7fff => panic!("not implemented to load {:#x}", addr),
             0x8000...0xffff => self.cartridge.prg_rom[(addr - 0x8000) as usize],
         }
@@ -50,7 +55,8 @@ impl<'a> Bus<'a> {
             0x2000...0x3fff => self.ppu.store((addr - 0x2000) & 0x7, val),
             0x4014 => self.dma.write(val),
             0x4000...0x4013 | 0x4015 | 0x4018...0x401f => self.apu.store(addr - 0x4000, val),
-            0x4016 | 0x4017 => {} // TODO: implement key pad
+            0x4016 => self.joypad.store(val),
+            0x4017 => {} // TODO: implement joy pad 2
             0x4020...0xffff => panic!("not implemented to set {:#x} at address {:#x}", val, addr),
         };
     }

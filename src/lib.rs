@@ -13,6 +13,8 @@ pub mod cartridge;
 pub mod cpu;
 /// transfer whole data from ram to PPU OAM
 pub mod dma;
+/// controller
+pub mod joypad;
 /// volatile memory
 pub mod memory;
 /// picture processing unit
