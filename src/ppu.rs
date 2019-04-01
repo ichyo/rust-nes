@@ -89,6 +89,7 @@ impl Ppu {
 
     fn render_line(&mut self, y: u8) {
         // TODO: Use sprite priorities
+        let sprites = self.get_sprites();
         for x in 0..WINDOW_WIDTH {
             let sprite0 = Sprite::new(&self.oam_data[0..4]);
             let sprite0_color = sprite0.get_color(
@@ -106,7 +107,7 @@ impl Ppu {
             }
 
             let rgb = self
-                .get_sprite_color(x as u8, y)
+                .get_sprite_color(&sprites, x as u8, y)
                 .or(bg_color)
                 .unwrap_or_else(|| self.palette_table.get_universal_background_color());
             let index = 3 * (x + y as usize * WINDOW_WIDTH);
@@ -116,14 +117,14 @@ impl Ppu {
         }
     }
 
-    fn get_sprite_color(&self, x: u8, y: u8) -> Option<Rgb> {
+    fn get_sprite_color(&self, sprites: &[Sprite], x: u8, y: u8) -> Option<Rgb> {
         // TODO: Read mask for
         // "Show sprites in leftmost 8 pixels of screen, 0: Hide"
         if !self.reg_mask.show_sprite() {
             return None;
         }
-        self.get_sprites()
-            .into_iter()
+        sprites
+            .iter()
             .filter_map(|s| {
                 s.get_color(
                     x,
