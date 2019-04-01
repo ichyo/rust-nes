@@ -164,7 +164,6 @@ fn main() -> Result<(), String> {
                 break 'main;
             }
         }
-        //let rgbs = ppu.get_buffer();
         let hz1 = apu.frequency1();
         let hz2 = apu.frequency2();
         let hz3 = apu.frequency3();
@@ -177,9 +176,13 @@ fn main() -> Result<(), String> {
                 let th2 = (time / unit2).fract();
                 let th3 = (time / unit3).fract();
                 buffer[i as usize] = 0.0;
-                buffer[i as usize] += 0.2 * (if th1 < 0.5 { 1.0 } else { -1.0 }) as f32;
-                buffer[i as usize] += 0.2 * (if th2 < 0.5 { 1.0 } else { -1.0 }) as f32;
-                buffer[i as usize] += 0.5
+                buffer[i as usize] += 0.3
+                    * apu.volume1() as f32
+                    * (if th1 < apu.duty1() { 1.0 } else { -1.0 }) as f32;
+                buffer[i as usize] += 0.3
+                    * apu.volume2() as f32
+                    * (if th2 < apu.duty2() { 1.0 } else { -1.0 }) as f32;
+                buffer[i as usize] += 0.4
                     * (if th3 < 0.5 {
                         -1.0 + 4.0 * th3
                     } else {
