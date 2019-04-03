@@ -101,8 +101,6 @@ fn main() -> Result<(), String> {
     let params = portaudio::StreamParameters::<f32>::new(output, CHANNELS, INTERLEAVED, latency);
     let settings = portaudio::OutputStreamSettings::new(params, SAMPLE_RATE, FRAMES);
 
-    let mut time = 0.0;
-
     let mut stream = pa.open_blocking_stream(settings).unwrap();
 
     stream.start().unwrap();
