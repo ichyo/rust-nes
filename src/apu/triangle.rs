@@ -7,20 +7,17 @@ struct Sequencer {
 }
 
 /// Triangle channel
-pub struct Pulse {
+pub struct Triangle {
     timer: Timer,
     sequencer: Sequencer,
-    clocks: u64,
 }
 
-static WAVEFORM: [[u8; 8]; 4] = [
-    [0, 1, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 0, 0, 0],
-    [1, 0, 0, 1, 1, 1, 1, 1],
+static WAVEFORM: [u8; 32] = [
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    13, 14, 15,
 ];
 
-const WAVE_LEN: u8 = 8;
+const WAVE_LEN: u8 = 32;
 
 impl Sequencer {
     pub fn new() -> Sequencer {
@@ -31,42 +28,23 @@ impl Sequencer {
         self.clock = (self.clock + 1) % WAVE_LEN;
     }
 
-    pub fn set_duty(&mut self, duty: u8) {
-        assert!(duty < 4);
-        self.duty = duty;
-    }
-
-    pub fn reset(&mut self) {
-        self.clock = 0;
-    }
-
-    fn waveform(&self) -> [u8; 8] {
-        WAVEFORM[self.duty as usize]
-    }
-
     pub fn sample(&self) -> f32 {
-        match self.waveform()[self.clock as usize] {
-            1 => 1.0,
-            0 => -1.0,
-            _ => unreachable!(),
-        }
+        (2.0 * f32::from(WAVEFORM[self.clock as usize]) / 15.0) - 1.0
     }
 }
 
-impl Pulse {
-    pub fn new() -> Pulse {
-        Pulse {
+impl Triangle {
+    pub fn new() -> Triangle {
+        Triangle {
             timer: Timer::new(0),
             sequencer: Sequencer::new(),
-            clocks: 0,
         }
     }
 
     pub fn tick(&mut self) {
-        if self.clocks % 2 == 0 && self.timer.tick() {
+        if self.timer.tick() {
             self.sequencer.tick();
         }
-        self.clocks += 1;
     }
 
     fn is_mute(&self) -> bool {
@@ -83,10 +61,7 @@ impl Pulse {
 
     pub fn store(&mut self, addr: u16, val: u8) {
         match addr {
-            0x00 => {
-                let duty = (val >> 6) & 0x3;
-                self.sequencer.set_duty(duty);
-            }
+            0x00 => {}
             0x01 => {}
             0x02 => {
                 let old_period = self.timer.period();
@@ -97,7 +72,6 @@ impl Pulse {
                 let old_period = self.timer.period();
                 let new_period = (old_period & 0xff) | (u16::from(val & 0x7) << 8);
                 self.timer.set_period(new_period);
-                self.sequencer.reset();
             }
             _ => unreachable!(),
         }

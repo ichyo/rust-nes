@@ -18,10 +18,9 @@ impl Timer {
         self.period = period;
     }
 
-    /// tick 1 CPU Clock. True if it output clocks
+    /// tick a clock. true if it output clocks
     pub fn tick(&mut self) -> bool {
-        // 1 APU Clock = 2 CPU Clock, so it needs 2 * period CPU clocks.
-        if self.clocks == 2 * self.period {
+        if self.clocks == self.period {
             self.clocks = 0;
             true
         } else {

@@ -1,7 +1,9 @@
 mod pulse;
 mod timer;
+mod triangle;
 
 use self::pulse::Pulse;
+use self::triangle::Triangle;
 use std::collections::vec_deque::Drain;
 use std::collections::VecDeque;
 
@@ -19,6 +21,7 @@ fn sample_index(clocks: u64) -> u64 {
 pub struct Apu {
     pulse1: Pulse,
     pulse2: Pulse,
+    triangle: Triangle,
     clocks: u64,
     buffer: VecDeque<f32>,
 }
@@ -35,6 +38,7 @@ impl Apu {
         Apu {
             pulse1: Pulse::new(),
             pulse2: Pulse::new(),
+            triangle: Triangle::new(),
             clocks: 0,
             buffer: VecDeque::with_capacity(BUFFER_LENGTH),
         }
@@ -52,6 +56,7 @@ impl Apu {
         match addr {
             0x00...0x03 => self.pulse1.store(addr, val),
             0x04...0x07 => self.pulse2.store(addr - 0x04, val),
+            0x08...0x0b => self.triangle.store(addr - 0x08, val),
             _ => {}
         }
     }
@@ -59,13 +64,15 @@ impl Apu {
     fn sample(&self) -> f32 {
         let p1 = self.pulse1.sample();
         let p2 = self.pulse2.sample();
-        p1 * 0.3 + p2 * 0.3
+        let t = self.triangle.sample();
+        p1 * 0.2 + p2 * 0.2 + t * 0.4
     }
 
     /// Tick 1 CPU clock
     pub fn tick(&mut self) {
         self.pulse1.tick();
         self.pulse2.tick();
+        self.triangle.tick();
         if sample_index(self.clocks) != sample_index(self.clocks + 1) {
             self.append_buffer(self.sample());
         }
