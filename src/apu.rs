@@ -1,30 +1,39 @@
+mod pulse;
+mod timer;
+
+use self::pulse::Pulse;
+use std::collections::vec_deque::Drain;
+use std::collections::VecDeque;
+
 use log::trace;
 
-const CPU_FREQ: f64 = 1.789_773 * 1_000_000.0;
+const CPU_CLOCKS: u64 = 1_789_733;
+const SAMPLE_RATE: u64 = 44_100;
+const COUNTS_PER_SEC: u64 = CPU_CLOCKS * SAMPLE_RATE;
+const BUFFER_LENGTH: usize = 1024;
 
-#[derive(Default)]
-/// audio processing unit. handles audio.
+/// audio processing unit.
 pub struct Apu {
-    duty1: u8,
-    volume1: u8,
-    timer1: u16,
-    duty2: u8,
-    volume2: u8,
-    timer2: u16,
-    timer3: u16,
+    pulse1: Pulse,
+    pulse2: Pulse,
+    counts: u64,
+    buffer: VecDeque<f32>,
+}
+
+impl Default for Apu {
+    fn default() -> Apu {
+        Apu::new()
+    }
 }
 
 impl Apu {
     /// Create APU
     pub fn new() -> Apu {
         Apu {
-            duty1: 0,
-            volume1: 0,
-            timer1: 0,
-            volume2: 0,
-            duty2: 0,
-            timer2: 0,
-            timer3: 0,
+            pulse1: Pulse::new(),
+            pulse2: Pulse::new(),
+            counts: 0,
+            buffer: VecDeque::with_capacity(BUFFER_LENGTH),
         }
     }
 
@@ -38,80 +47,42 @@ impl Apu {
     pub fn store(&mut self, addr: u16, val: u8) {
         trace!("Store addr={:#x} val={:#x}", addr, val);
         match addr {
-            0x00 => {
-                self.volume1 = val & 0xf;
-                self.duty1 = (val >> 6) & 0x3;
-            }
-            0x02 => {
-                self.timer1 = (self.timer1 & 0x700) | (val as u16);
-            }
-            0x03 => {
-                self.timer1 = (self.timer1 & 0xff) | ((val as u16 & 0x7) << 8);
-            }
-            0x04 => {
-                self.volume2 = val & 0xf;
-                self.duty2 = (val >> 6) & 0x3;
-            }
-            0x06 => {
-                self.timer2 = (self.timer2 & 0x700) | (val as u16);
-            }
-            0x07 => {
-                self.timer2 = (self.timer2 & 0xff) | ((val as u16 & 0x7) << 8);
-            }
-            0x0a => {
-                self.timer3 = (self.timer3 & 0x700) | (val as u16);
-            }
-            0x0b => {
-                self.timer3 = (self.timer3 & 0xff) | ((val as u16 & 0x7) << 8);
-            }
+            0x00...0x03 => self.pulse1.store(addr, val),
+            0x04...0x07 => self.pulse2.store(addr - 0x04, val),
             _ => {}
         }
     }
 
-    /// TODO: remove this
-    pub fn frequency1(&self) -> f64 {
-        CPU_FREQ / (16.0 * (self.timer1 as f64 + 1.0))
+    fn sample(&self) -> f32 {
+        let p1 = self.pulse1.sample();
+        let p2 = self.pulse2.sample();
+        p1 * 0.3 + p2 * 0.3
     }
 
-    /// TODO: remove this
-    pub fn volume1(&self) -> f64 {
-        self.volume1 as f64 / 15.0
-    }
-
-    /// TODO: remove this
-    pub fn duty1(&self) -> f64 {
-        match self.duty1 {
-            0 => 0.125,
-            1 => 0.25,
-            2 => 0.5,
-            3 => 0.75,
-            _ => unreachable!(),
+    /// Tick 1 CPU clock
+    pub fn tick(&mut self) {
+        self.pulse1.tick();
+        self.pulse2.tick();
+        let k1 = self.counts / (COUNTS_PER_SEC / SAMPLE_RATE);
+        self.counts += COUNTS_PER_SEC / CPU_CLOCKS;
+        let k2 = self.counts / (COUNTS_PER_SEC / SAMPLE_RATE);
+        if k1 != k2 {
+            self.append_buffer(self.sample());
+        }
+        if self.counts == COUNTS_PER_SEC {
+            self.counts = 0;
         }
     }
 
-    /// TODO: remove this
-    pub fn frequency2(&self) -> f64 {
-        CPU_FREQ / (16.0 * (self.timer2 as f64 + 1.0))
-    }
-
-    /// TODO: remove this
-    pub fn volume2(&self) -> f64 {
-        self.volume2 as f64 / 15.0
-    }
-
-    /// TODO: remove this
-    pub fn duty2(&self) -> f64 {
-        match self.duty1 {
-            0 => 0.125,
-            1 => 0.25,
-            2 => 0.5,
-            3 => 0.75,
-            _ => unreachable!(),
+    fn append_buffer(&mut self, x: f32) {
+        if self.buffer.len() == BUFFER_LENGTH {
+            self.buffer.pop_front();
         }
+        self.buffer.push_back(x);
     }
 
-    /// TODO: remove this
-    pub fn frequency3(&self) -> f64 {
-        CPU_FREQ / (32.0 * (self.timer3 as f64 + 1.0))
+    /// Get sampling buffer
+    pub fn consume_buffer(&mut self) -> Drain<f32> {
+        self.buffer.drain(..)
     }
 }

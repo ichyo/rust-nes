@@ -15,7 +15,7 @@ use std::io::prelude::*;
 
 const SAMPLE_RATE: f64 = 44_100.0;
 const CHANNELS: i32 = 1;
-const FRAMES: u32 = (44100.0 / 60.0) as u32;
+const FRAMES: u32 = 1024;
 const INTERLEAVED: bool = true;
 
 fn joypad_key(keycode: Keycode) -> Option<Key> {
@@ -97,15 +97,15 @@ fn main() -> Result<(), String> {
     let pa = portaudio::PortAudio::new().unwrap();
     let output = pa.default_output_device().unwrap();
     let output_info = pa.device_info(output).unwrap();
-    let latency = output_info.default_low_output_latency;
+    let latency = output_info.default_high_output_latency;
     let params = portaudio::StreamParameters::<f32>::new(output, CHANNELS, INTERLEAVED, latency);
     let settings = portaudio::OutputStreamSettings::new(params, SAMPLE_RATE, FRAMES);
 
     let mut time = 0.0;
 
     let mut stream = pa.open_blocking_stream(settings).unwrap();
-    stream.start().unwrap();
 
+    stream.start().unwrap();
     'main: loop {
         loop {
             let cycle = cpu.exec(&mut Bus::new(
@@ -124,6 +124,9 @@ fn main() -> Result<(), String> {
                 let res = ppu.exec();
                 vblank_nmi |= res.vblank_nmi;
                 new_frame |= res.new_frame;
+            }
+            for _ in 0..(cycle + steal) {
+                apu.tick();
             }
             if new_frame {
                 break;
@@ -164,33 +167,12 @@ fn main() -> Result<(), String> {
                 break 'main;
             }
         }
-        let hz1 = apu.frequency1();
-        let hz2 = apu.frequency2();
-        let hz3 = apu.frequency3();
-        stream.write(FRAMES, |buffer| {
-            for i in 0..buffer.len() {
-                let unit1 = 1.0 / hz1;
-                let unit2 = 1.0 / hz2;
-                let unit3 = 1.0 / hz3;
-                let th1 = (time / unit1).fract();
-                let th2 = (time / unit2).fract();
-                let th3 = (time / unit3).fract();
-                buffer[i as usize] = 0.0;
-                buffer[i as usize] += 0.3
-                    * apu.volume1() as f32
-                    * (if th1 < apu.duty1() { 1.0 } else { -1.0 }) as f32;
-                buffer[i as usize] += 0.3
-                    * apu.volume2() as f32
-                    * (if th2 < apu.duty2() { 1.0 } else { -1.0 }) as f32;
-                buffer[i as usize] += 0.4
-                    * (if th3 < 0.5 {
-                        -1.0 + 4.0 * th3
-                    } else {
-                        -1.0 + 4.0 * (1.0 - th3)
-                    }) as f32;
-                time += 1.0 / SAMPLE_RATE;
-            }
+
+        let buffer = apu.consume_buffer().collect::<Vec<_>>();
+        stream.write(buffer.len() as u32, |output| {
+            output.copy_from_slice(&buffer);
         });
+
         let rgbs = ppu.get_buffer();
         texture.update(None, rgbs, width * 3).unwrap();
         canvas.copy(&texture, None, None)?;
