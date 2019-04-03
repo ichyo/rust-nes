@@ -16,11 +16,12 @@ impl Timer {
 
     pub fn set_period(&mut self, period: u16) {
         self.period = period;
+        self.clocks = 0;
     }
 
     /// tick a clock. true if it output clocks
     pub fn tick(&mut self) -> bool {
-        if self.clocks == self.period {
+        if self.clocks >= self.period {
             self.clocks = 0;
             true
         } else {
