@@ -7,16 +7,19 @@ use std::collections::VecDeque;
 
 use log::trace;
 
-const CPU_CLOCKS: u64 = 1_789_733;
+const CPU_CLOCK_RATE: u64 = 1_789_733;
 const SAMPLE_RATE: u64 = 44_100;
-const COUNTS_PER_SEC: u64 = CPU_CLOCKS * SAMPLE_RATE;
 const BUFFER_LENGTH: usize = 1024;
+
+fn sample_index(clocks: u64) -> u64 {
+    clocks * SAMPLE_RATE / CPU_CLOCK_RATE
+}
 
 /// audio processing unit.
 pub struct Apu {
     pulse1: Pulse,
     pulse2: Pulse,
-    counts: u64,
+    clocks: u64,
     buffer: VecDeque<f32>,
 }
 
@@ -32,7 +35,7 @@ impl Apu {
         Apu {
             pulse1: Pulse::new(),
             pulse2: Pulse::new(),
-            counts: 0,
+            clocks: 0,
             buffer: VecDeque::with_capacity(BUFFER_LENGTH),
         }
     }
@@ -63,14 +66,12 @@ impl Apu {
     pub fn tick(&mut self) {
         self.pulse1.tick();
         self.pulse2.tick();
-        let k1 = self.counts / (COUNTS_PER_SEC / SAMPLE_RATE);
-        self.counts += COUNTS_PER_SEC / CPU_CLOCKS;
-        let k2 = self.counts / (COUNTS_PER_SEC / SAMPLE_RATE);
-        if k1 != k2 {
+        if sample_index(self.clocks) != sample_index(self.clocks + 1) {
             self.append_buffer(self.sample());
         }
-        if self.counts == COUNTS_PER_SEC {
-            self.counts = 0;
+        self.clocks += 1;
+        if self.clocks == CPU_CLOCK_RATE {
+            self.clocks = 0;
         }
     }
 
