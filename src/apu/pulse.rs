@@ -1,3 +1,4 @@
+use super::envelope::Envelope;
 use super::frame_counter::FrameCounter;
 use super::frame_counter::SequencerMode;
 use super::length_counter::LengthCounter;
@@ -15,6 +16,7 @@ pub struct Pulse {
     sequencer: Sequencer,
     frame_counter: FrameCounter,
     length_counter: LengthCounter,
+    envelope: Envelope,
     cpu_clocks: u16,
 }
 
@@ -67,6 +69,7 @@ impl Pulse {
             sequencer: Sequencer::new(),
             frame_counter: FrameCounter::new(),
             length_counter: LengthCounter::new(),
+            envelope: Envelope::new(),
             cpu_clocks: 0,
         }
     }
@@ -94,7 +97,9 @@ impl Pulse {
     }
 
     pub fn handle_frame_signal(&mut self) {
-        if self.frame_counter.is_quarter_frame() {}
+        if self.frame_counter.is_quarter_frame() {
+            self.envelope.tick();
+        }
         if self.frame_counter.is_half_frame() {
             self.length_counter.tick();
         }
@@ -104,12 +109,16 @@ impl Pulse {
         self.timer.period() < 8 || self.length_counter.counter() == 0
     }
 
-    pub fn sample(&self) -> f32 {
+    fn volume(&self) -> f32 {
         if self.is_mute() {
             0.0
         } else {
-            self.sequencer.sample()
+            self.envelope.volume()
         }
+    }
+
+    pub fn sample(&self) -> f32 {
+        self.volume() * self.sequencer.sample()
     }
 
     pub fn store(&mut self, addr: u16, val: u8) {
@@ -119,6 +128,11 @@ impl Pulse {
                 self.sequencer.set_duty(duty);
                 let halt = ((val >> 5) & 0x1) != 0;
                 self.length_counter.set_halt(halt);
+                self.envelope.set_loop_flag(halt);
+                let constant = ((val >> 4) & 0x1) != 0;
+                self.envelope.set_constant_flag(constant);
+                let volume = val & 0xf;
+                self.envelope.set_volume(volume);
             }
             0x01 => {}
             0x02 => {
@@ -133,6 +147,7 @@ impl Pulse {
                 let length_index = val >> 3;
                 self.length_counter.load_with_index(length_index);
                 self.sequencer.reset();
+                self.envelope.set_start_flag();
             }
             0x15 => {
                 let enabled = (val & 0x01) != 0;

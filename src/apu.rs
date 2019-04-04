@@ -1,3 +1,4 @@
+mod envelope;
 mod frame_counter;
 mod length_counter;
 mod pulse;
@@ -77,7 +78,7 @@ impl Apu {
         let p1 = self.pulse1.sample();
         let p2 = self.pulse2.sample();
         let t = self.triangle.sample();
-        p1 * 0.2 + p2 * 0.2 + t * 0.4
+        p1 * 0.2 + p2 * 0.2 + t * 0.2
     }
 
     /// Tick 1 CPU clock
