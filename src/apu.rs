@@ -1,4 +1,5 @@
 mod frame_counter;
+mod length_counter;
 mod pulse;
 mod timer;
 mod triangle;
@@ -58,6 +59,16 @@ impl Apu {
             0x00...0x03 => self.pulse1.store(addr, val),
             0x04...0x07 => self.pulse2.store(addr - 0x04, val),
             0x08...0x0b => self.triangle.store(addr - 0x08, val),
+            0x15 => {
+                self.pulse1.store(addr, val);
+                self.pulse2.store(addr, val >> 1);
+                self.triangle.store(addr, val >> 2);
+            }
+            0x17 => {
+                self.pulse1.store(addr, val);
+                self.pulse2.store(addr, val);
+                self.triangle.store(addr, val);
+            }
             _ => {}
         }
     }

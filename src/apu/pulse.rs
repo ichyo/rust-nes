@@ -1,5 +1,6 @@
 use super::frame_counter::FrameCounter;
 use super::frame_counter::SequencerMode;
+use super::length_counter::LengthCounter;
 use super::timer::Timer;
 
 /// Waveform generator
@@ -13,6 +14,7 @@ pub struct Pulse {
     timer: Timer,
     sequencer: Sequencer,
     frame_counter: FrameCounter,
+    length_counter: LengthCounter,
     cpu_clocks: u16,
 }
 
@@ -64,6 +66,7 @@ impl Pulse {
             timer: Timer::new(0),
             sequencer: Sequencer::new(),
             frame_counter: FrameCounter::new(),
+            length_counter: LengthCounter::new(),
             cpu_clocks: 0,
         }
     }
@@ -92,11 +95,13 @@ impl Pulse {
 
     pub fn handle_frame_signal(&mut self) {
         if self.frame_counter.is_quarter_frame() {}
-        if self.frame_counter.is_half_frame() {}
+        if self.frame_counter.is_half_frame() {
+            self.length_counter.tick();
+        }
     }
 
     fn is_mute(&self) -> bool {
-        self.timer.period() < 8
+        self.timer.period() < 8 || self.length_counter.counter() == 0
     }
 
     pub fn sample(&self) -> f32 {
@@ -112,6 +117,8 @@ impl Pulse {
             0x00 => {
                 let duty = (val >> 6) & 0x3;
                 self.sequencer.set_duty(duty);
+                let halt = ((val >> 5) & 0x1) != 0;
+                self.length_counter.set_halt(halt);
             }
             0x01 => {}
             0x02 => {
@@ -123,7 +130,13 @@ impl Pulse {
                 let old_period = self.timer.period();
                 let new_period = (old_period & 0xff) | (u16::from(val & 0x7) << 8);
                 self.timer.set_period(new_period);
+                let length_index = val >> 3;
+                self.length_counter.load_with_index(length_index);
                 self.sequencer.reset();
+            }
+            0x15 => {
+                let enabled = (val & 0x01) != 0;
+                self.length_counter.set_enabled(enabled);
             }
             0x17 => {
                 let mode = if (val & 0x80) != 0 {
