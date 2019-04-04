@@ -1,3 +1,5 @@
+use super::frame_counter::FrameCounter;
+use super::frame_counter::SequencerMode;
 use super::timer::Timer;
 
 /// Waveform generator
@@ -10,6 +12,7 @@ struct Sequencer {
 pub struct Triangle {
     timer: Timer,
     sequencer: Sequencer,
+    frame_counter: FrameCounter,
 }
 
 static WAVEFORM: [u8; 32] = [
@@ -38,13 +41,25 @@ impl Triangle {
         Triangle {
             timer: Timer::new(0),
             sequencer: Sequencer::new(),
+            frame_counter: FrameCounter::new(),
         }
     }
 
     pub fn tick(&mut self) {
+        // CPU clocks
         if self.timer.tick() {
             self.sequencer.tick();
         }
+
+        // this needs to be before tick to handle signal by store.
+        self.handle_frame_signal();
+
+        self.frame_counter.tick();
+    }
+
+    pub fn handle_frame_signal(&mut self) {
+        if self.frame_counter.is_quarter_frame() {}
+        if self.frame_counter.is_half_frame() {}
     }
 
     fn is_mute(&self) -> bool {
@@ -72,6 +87,14 @@ impl Triangle {
                 let old_period = self.timer.period();
                 let new_period = (old_period & 0xff) | (u16::from(val & 0x7) << 8);
                 self.timer.set_period(new_period);
+            }
+            0x17 => {
+                let mode = if (val & 0x80) != 0 {
+                    SequencerMode::FiveStep
+                } else {
+                    SequencerMode::FourStep
+                };
+                self.frame_counter.set_mode(mode);
             }
             _ => unreachable!(),
         }

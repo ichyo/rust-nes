@@ -1,3 +1,5 @@
+use super::frame_counter::FrameCounter;
+use super::frame_counter::SequencerMode;
 use super::timer::Timer;
 
 /// Waveform generator
@@ -10,7 +12,8 @@ struct Sequencer {
 pub struct Pulse {
     timer: Timer,
     sequencer: Sequencer,
-    clocks: u64,
+    frame_counter: FrameCounter,
+    cpu_clocks: u16,
 }
 
 static WAVEFORM: [[u8; 8]; 4] = [
@@ -21,6 +24,8 @@ static WAVEFORM: [[u8; 8]; 4] = [
 ];
 
 const WAVE_LEN: u8 = 8;
+
+const CPU_CLOCKS_PERIOD: u16 = 2;
 
 impl Sequencer {
     pub fn new() -> Sequencer {
@@ -58,15 +63,36 @@ impl Pulse {
         Pulse {
             timer: Timer::new(0),
             sequencer: Sequencer::new(),
-            clocks: 0,
+            frame_counter: FrameCounter::new(),
+            cpu_clocks: 0,
         }
     }
 
+    /// CPU clock
     pub fn tick(&mut self) {
-        if self.clocks % 2 == 0 && self.timer.tick() {
-            self.sequencer.tick();
+        let apu_clock = (self.cpu_clocks % 2) == 0;
+        if apu_clock {
+            // APU clocks
+            if self.timer.tick() {
+                // Timer clocks
+                self.sequencer.tick();
+            }
         }
-        self.clocks += 1;
+        // CPU clocks
+
+        // this needs to be before tick to handle signal by store.
+        self.handle_frame_signal();
+
+        self.frame_counter.tick();
+        self.cpu_clocks += 1;
+        if self.cpu_clocks >= CPU_CLOCKS_PERIOD {
+            self.cpu_clocks = 0;
+        }
+    }
+
+    pub fn handle_frame_signal(&mut self) {
+        if self.frame_counter.is_quarter_frame() {}
+        if self.frame_counter.is_half_frame() {}
     }
 
     fn is_mute(&self) -> bool {
@@ -98,6 +124,14 @@ impl Pulse {
                 let new_period = (old_period & 0xff) | (u16::from(val & 0x7) << 8);
                 self.timer.set_period(new_period);
                 self.sequencer.reset();
+            }
+            0x17 => {
+                let mode = if (val & 0x80) != 0 {
+                    SequencerMode::FiveStep
+                } else {
+                    SequencerMode::FourStep
+                };
+                self.frame_counter.set_mode(mode);
             }
             _ => unreachable!(),
         }

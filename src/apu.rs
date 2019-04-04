@@ -1,3 +1,4 @@
+mod frame_counter;
 mod pulse;
 mod timer;
 mod triangle;
