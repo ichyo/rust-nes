@@ -4,96 +4,71 @@ use super::frame_counter::SequencerMode;
 use super::length_counter::LengthCounter;
 use super::timer::Timer;
 
-/// Waveform generator
+static PERIOD_TABLE: [u16; 0x10] = [
+    4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
+];
+
 struct Sequencer {
-    clock: u8,
-    duty: u8,
+    state: u16,
+    mode_flag: bool,
 }
 
-/// Triangle channel
-pub struct Pulse {
+pub struct Noise {
     timer: Timer,
     sequencer: Sequencer,
     frame_counter: FrameCounter,
     length_counter: LengthCounter,
     envelope: Envelope,
-    cpu_clocks: u16,
 }
 
-static WAVEFORM: [[u8; 8]; 4] = [
-    [0, 1, 0, 0, 0, 0, 0, 0],
-    [0, 1, 1, 0, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1, 0, 0, 0],
-    [1, 0, 0, 1, 1, 1, 1, 1],
-];
-
-const WAVE_LEN: u8 = 8;
-
-const CPU_CLOCKS_PERIOD: u16 = 2;
-
 impl Sequencer {
-    pub fn new() -> Sequencer {
-        Sequencer { duty: 0, clock: 0 }
+    fn new() -> Sequencer {
+        Sequencer {
+            state: 1,
+            mode_flag: false,
+        }
     }
 
-    pub fn tick(&mut self) {
-        self.clock = (self.clock + 1) % WAVE_LEN;
+    fn tick(&mut self) {
+        let xor_bit = if self.mode_flag { 6 } else { 1 };
+        let x = self.state & 0x1;
+        let y = (self.state >> xor_bit) & 0x1;
+        let feedback = x ^ y;
+        self.state = (feedback << 14) | (self.state >> 1);
     }
 
-    pub fn set_duty(&mut self, duty: u8) {
-        assert!(duty < 4);
-        self.duty = duty;
-    }
-
-    pub fn reset(&mut self) {
-        self.clock = 0;
-    }
-
-    fn waveform(&self) -> [u8; 8] {
-        WAVEFORM[self.duty as usize]
-    }
-
-    pub fn sample(&self) -> f32 {
-        match self.waveform()[self.clock as usize] {
+    fn sample(&self) -> f32 {
+        match self.state & 0x1 {
             1 => 1.0,
             0 => -1.0,
             _ => unreachable!(),
         }
     }
+
+    fn set_mode_flag(&mut self, flag: bool) {
+        self.mode_flag = flag;
+    }
 }
 
-impl Pulse {
-    pub fn new() -> Pulse {
-        Pulse {
+impl Noise {
+    pub fn new() -> Noise {
+        Noise {
             timer: Timer::new(0),
             sequencer: Sequencer::new(),
             frame_counter: FrameCounter::new(),
             length_counter: LengthCounter::new(),
             envelope: Envelope::new(),
-            cpu_clocks: 0,
         }
     }
 
-    /// CPU clock
     pub fn tick(&mut self) {
-        let apu_clock = (self.cpu_clocks % 2) == 0;
-        if apu_clock {
-            // APU clocks
-            if self.timer.tick() {
-                // Timer clocks
-                self.sequencer.tick();
-            }
+        if self.timer.tick() {
+            self.sequencer.tick();
         }
-        // CPU clocks
 
         // this needs to be before tick to handle signal by store.
         self.handle_frame_signal();
         self.frame_counter.tick();
-
-        self.cpu_clocks += 1;
-        if self.cpu_clocks >= CPU_CLOCKS_PERIOD {
-            self.cpu_clocks = 0;
-        }
     }
 
     pub fn handle_frame_signal(&mut self) {
@@ -106,7 +81,7 @@ impl Pulse {
     }
 
     fn is_mute(&self) -> bool {
-        self.timer.period() < 8 || self.length_counter.counter() == 0
+        self.length_counter.counter() == 0
     }
 
     fn volume(&self) -> f32 {
@@ -124,8 +99,6 @@ impl Pulse {
     pub fn store(&mut self, addr: u16, val: u8) {
         match addr {
             0x00 => {
-                let duty = (val >> 6) & 0x3;
-                self.sequencer.set_duty(duty);
                 let halt = ((val >> 5) & 0x1) != 0;
                 self.length_counter.set_halt(halt);
                 self.envelope.set_loop_flag(halt);
@@ -136,17 +109,14 @@ impl Pulse {
             }
             0x01 => {}
             0x02 => {
-                let old_period = self.timer.period();
-                let new_period = (old_period & 0x700) | u16::from(val);
-                self.timer.set_period(new_period);
+                let mode_flag = (val & 0x80) != 0;
+                let period = PERIOD_TABLE[(val & 0xf) as usize];
+                self.sequencer.set_mode_flag(mode_flag);
+                self.timer.set_period(period);
             }
             0x03 => {
-                let old_period = self.timer.period();
-                let new_period = (old_period & 0xff) | (u16::from(val & 0x7) << 8);
-                self.timer.set_period(new_period);
                 let length_index = val >> 3;
                 self.length_counter.load_with_index(length_index);
-                self.sequencer.reset();
                 self.envelope.set_start_flag();
             }
             0x15 => {
