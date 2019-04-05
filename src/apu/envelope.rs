@@ -1,36 +1,6 @@
+use super::divider::Divider;
+
 const MAX_DECAY: u8 = 15;
-
-struct Devider {
-    reload_value: u8,
-    counter: u8,
-}
-
-impl Devider {
-    fn new() -> Devider {
-        Devider {
-            reload_value: 0,
-            counter: 0,
-        }
-    }
-
-    fn tick(&mut self) -> bool {
-        if self.counter == 0 {
-            self.counter = self.reload_value;
-            true
-        } else {
-            self.counter -= 1;
-            false
-        }
-    }
-
-    fn reset(&mut self) {
-        self.counter = self.reload_value;
-    }
-
-    fn set_reload_value(&mut self, value: u8) {
-        self.reload_value = value;
-    }
-}
 
 struct DecayCounter {
     decay: u8,
@@ -67,7 +37,7 @@ impl DecayCounter {
 }
 
 pub struct Envelope {
-    devider: Devider,
+    devider: Divider,
     decay: DecayCounter,
     start_flag: bool,
     constant_volume: u8,
@@ -77,7 +47,7 @@ pub struct Envelope {
 impl Envelope {
     pub fn new() -> Envelope {
         Envelope {
-            devider: Devider::new(),
+            devider: Divider::new(),
             decay: DecayCounter::new(),
             start_flag: true,
             constant_volume: 0,

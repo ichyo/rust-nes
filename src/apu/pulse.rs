@@ -2,7 +2,24 @@ use super::envelope::Envelope;
 use super::frame_counter::FrameCounter;
 use super::frame_counter::SequencerMode;
 use super::length_counter::LengthCounter;
+use super::sweep::NegateMode;
+use super::sweep::Sweep;
 use super::timer::Timer;
+
+#[derive(Clone, Copy)]
+pub enum PulseId {
+    One,
+    Two,
+}
+
+impl PulseId {
+    fn negate_mode(self) -> NegateMode {
+        match self {
+            PulseId::One => NegateMode::OneComplement,
+            PulseId::Two => NegateMode::TwoComplement,
+        }
+    }
+}
 
 /// Waveform generator
 struct Sequencer {
@@ -17,6 +34,7 @@ pub struct Pulse {
     frame_counter: FrameCounter,
     length_counter: LengthCounter,
     envelope: Envelope,
+    sweep: Sweep,
     cpu_clocks: u16,
 }
 
@@ -63,13 +81,14 @@ impl Sequencer {
 }
 
 impl Pulse {
-    pub fn new() -> Pulse {
+    pub fn new(id: PulseId) -> Pulse {
         Pulse {
             timer: Timer::new(0),
             sequencer: Sequencer::new(),
             frame_counter: FrameCounter::new(),
             length_counter: LengthCounter::new(),
             envelope: Envelope::new(),
+            sweep: Sweep::new(id.negate_mode()),
             cpu_clocks: 0,
         }
     }
@@ -84,7 +103,6 @@ impl Pulse {
                 self.sequencer.tick();
             }
         }
-        // CPU clocks
 
         // this needs to be before tick to handle signal by store.
         self.handle_frame_signal();
@@ -101,12 +119,15 @@ impl Pulse {
             self.envelope.tick();
         }
         if self.frame_counter.is_half_frame() {
+            self.sweep.tick(&mut self.timer);
             self.length_counter.tick();
         }
     }
 
     fn is_mute(&self) -> bool {
-        self.timer.period() < 8 || self.length_counter.counter() == 0
+        self.timer.period() < 8
+            || self.length_counter.counter() == 0
+            || self.sweep.is_mute(&self.timer)
     }
 
     fn volume(&self) -> f32 {
@@ -134,7 +155,7 @@ impl Pulse {
                 let volume = val & 0xf;
                 self.envelope.set_volume(volume);
             }
-            0x01 => {}
+            0x01 => self.sweep.store(val),
             0x02 => {
                 let old_period = self.timer.period();
                 let new_period = (old_period & 0x700) | u16::from(val);

@@ -29,7 +29,9 @@ impl LengthCounter {
     }
 
     pub fn load_with_index(&mut self, length_index: u8) {
-        self.counter = LENGTH_TABLE[length_index as usize]
+        if self.enabled {
+            self.counter = LENGTH_TABLE[length_index as usize]
+        }
     }
 
     pub fn set_enabled(&mut self, enabled: bool) {

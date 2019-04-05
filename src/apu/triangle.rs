@@ -98,14 +98,13 @@ impl Triangle {
         if self.timer.tick() {
             // timer clock
             // The sequencer is clocked by the timer as long as both the linear counter and the length counter are nonzero.
-            if self.length_counter.counter() != 0 && self.linear_counter.counter() != 0 {
+            if self.linear_counter.counter() != 0 && self.length_counter.counter() != 0 {
                 self.sequencer.tick();
             }
         }
 
         // this needs to be before tick to handle signal by store.
         self.handle_frame_signal();
-
         self.frame_counter.tick();
     }
 
