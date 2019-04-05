@@ -129,7 +129,6 @@ impl Triangle {
                 self.linear_counter.set_control_flag(halt);
                 let reload_value = val & 0x7f;
                 self.linear_counter.set_reload_value(reload_value);
-                self.linear_counter.set_reload_flag();
             }
             0x01 => {}
             0x02 => {
