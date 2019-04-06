@@ -4,7 +4,7 @@ mod register;
 use self::instructions::{AddressingMode, Instruction, Opcode};
 use self::register::Register;
 use crate::bus::Bus;
-use log::{info, trace};
+use log::{debug, trace};
 
 #[derive(Debug, Copy, Clone)]
 enum Operand {
@@ -154,7 +154,7 @@ impl Cpu {
         self.reg.P.set_interrupt_disable_flag(true);
 
         self.reg.PC = bus.load_w(0xfffa);
-        info!("nmi loaded {}", self.reg.PC);
+        debug!("nmi loaded {}", self.reg.PC);
     }
 
     fn set_zero_and_negative_flags(&mut self, val: u8) {
