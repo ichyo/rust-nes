@@ -89,7 +89,11 @@ impl Ppu {
 
     fn render_line(&mut self, y: u8) {
         // TODO: Use sprite priorities
-        let sprites = self.get_sprites();
+        let sprites: Vec<Sprite> = self
+            .get_sprites()
+            .into_iter()
+            .filter(|s| s.is_render_line(y))
+            .collect::<Vec<_>>();
         for x in 0..WINDOW_WIDTH {
             let sprite0 = Sprite::new(&self.oam_data[0..4]);
             let sprite0_color = sprite0.get_color(

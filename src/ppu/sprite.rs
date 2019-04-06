@@ -44,6 +44,11 @@ impl Sprite {
         }
     }
 
+    pub fn is_render_line(&self, y: u8) -> bool {
+        let inner_y = i16::from(y) - i16::from(self.base_y);
+        inner_y >= 0 && inner_y < i16::from(SPRITE_HEIGHT)
+    }
+
     pub fn get_color(
         &self,
         x: u8,
