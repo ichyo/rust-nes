@@ -34,7 +34,7 @@ fn joypad_key(keycode: Keycode) -> Option<Key> {
 
 fn main() -> Result<(), String> {
     env_logger::Builder::new()
-        .filter(None, log::LevelFilter::Debug)
+        .filter(None, log::LevelFilter::Info)
         .init();
 
     let path = env::args().nth(1).expect("please specify the path to nes");
