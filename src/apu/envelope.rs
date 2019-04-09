@@ -2,6 +2,7 @@ use super::divider::Divider;
 
 const MAX_DECAY: u8 = 15;
 
+#[derive(Clone)]
 struct DecayCounter {
     decay: u8,
     loop_flag: bool,
@@ -36,6 +37,7 @@ impl DecayCounter {
     }
 }
 
+#[derive(Clone)]
 pub struct Envelope {
     devider: Divider,
     decay: DecayCounter,

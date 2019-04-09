@@ -48,7 +48,7 @@ impl KeyState {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 /// NES controller
 pub struct JoyPad {
     key_state: KeyState,

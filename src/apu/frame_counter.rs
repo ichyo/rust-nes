@@ -37,6 +37,7 @@ impl SequencerMode {
     }
 }
 
+#[derive(Clone)]
 pub struct FrameCounter {
     mode: SequencerMode,
     clocks: u16,

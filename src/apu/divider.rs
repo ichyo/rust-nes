@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct Divider {
     reload_value: u8,
     counter: u8,

@@ -44,6 +44,7 @@ impl Screen {
     }
 }
 
+#[derive(Clone)]
 pub struct NameTables {
     table1: NameTable,
     table2: NameTable,
@@ -116,6 +117,7 @@ impl NameTables {
     }
 }
 
+#[derive(Clone)]
 struct NameTable {
     memory: [u8; TABLE_SIZE as usize],
 }

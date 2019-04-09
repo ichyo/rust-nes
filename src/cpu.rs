@@ -14,7 +14,7 @@ enum Operand {
     Memory(u16),
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 /// Cpu model with register
 pub struct Cpu {
     reg: Register,

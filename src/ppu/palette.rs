@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Palettes {
     memory: [u8; 0x20],
 }

@@ -1,3 +1,4 @@
+#[derive(Clone)]
 /// Variable-rate timer
 pub struct Timer {
     period: u16,

@@ -8,11 +8,13 @@ static PERIOD_TABLE: [u16; 0x10] = [
     4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
 ];
 
+#[derive(Clone)]
 struct Sequencer {
     state: u16,
     mode_flag: bool,
 }
 
+#[derive(Clone)]
 pub struct Noise {
     timer: Timer,
     sequencer: Sequencer,

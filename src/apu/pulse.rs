@@ -21,12 +21,14 @@ impl PulseId {
     }
 }
 
+#[derive(Clone)]
 /// Waveform generator
 struct Sequencer {
     clock: u8,
     duty: u8,
 }
 
+#[derive(Clone)]
 /// Triangle channel
 pub struct Pulse {
     timer: Timer,

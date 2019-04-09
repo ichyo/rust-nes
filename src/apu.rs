@@ -25,6 +25,7 @@ fn sample_index(clocks: u64) -> u64 {
     clocks * SAMPLE_RATE / CPU_CLOCK_RATE
 }
 
+#[derive(Clone)]
 /// audio processing unit.
 pub struct Apu {
     pulse1: Pulse,

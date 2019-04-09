@@ -1,16 +1,16 @@
 use super::pattern::PatternTableSide;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct PPUCtrl {
     value: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct PPUMask {
     value: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct PPUStatus {
     value: u8,
 }

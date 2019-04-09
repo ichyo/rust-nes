@@ -2,7 +2,7 @@ use crate::memory::Memory;
 use crate::ppu::Ppu;
 
 /// DMA transfer for PPU OAM
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Dma {
     high: Option<u8>,
 }

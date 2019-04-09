@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct PatternTables {
     left: PatternTable,
     right: PatternTable,
@@ -5,6 +6,7 @@ pub struct PatternTables {
 
 const PATTERN_TABLE_LENGTH: usize = 0x1000;
 
+#[derive(Clone)]
 pub struct PatternTable {
     memory: [u8; PATTERN_TABLE_LENGTH],
 }

@@ -7,6 +7,7 @@ pub enum NegateMode {
     TwoComplement,
 }
 
+#[derive(Clone)]
 pub struct Sweep {
     devider: Divider,
     negate_flag: bool,

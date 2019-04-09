@@ -3,11 +3,13 @@ use super::frame_counter::SequencerMode;
 use super::length_counter::LengthCounter;
 use super::timer::Timer;
 
+#[derive(Clone)]
 /// Waveform generator
 struct Sequencer {
     clock: u8,
 }
 
+#[derive(Clone)]
 struct LinearCounter {
     reload_value: u8,
     reload_flag: bool,
@@ -15,6 +17,7 @@ struct LinearCounter {
     counter: u8,
 }
 
+#[derive(Clone)]
 /// Triangle channel
 pub struct Triangle {
     timer: Timer,

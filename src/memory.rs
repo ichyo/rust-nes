@@ -1,5 +1,6 @@
 const MEMORY_LENGTH: usize = 2 * 1024;
 
+#[derive(Clone)]
 /// volatile memory in NES. 2kB
 pub struct Memory([u8; MEMORY_LENGTH]);
 impl Memory {

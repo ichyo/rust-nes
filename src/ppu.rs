@@ -12,6 +12,7 @@ use pattern::PatternTables;
 use register::{PPUCtrl, PPUMask, PPUStatus};
 use sprite::Sprite;
 
+#[derive(Clone)]
 /// Picture Processing Unit. handle graphics.
 pub struct Ppu {
     reg_ctrl: PPUCtrl,

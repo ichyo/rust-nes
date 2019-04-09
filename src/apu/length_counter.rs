@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct LengthCounter {
     enabled: bool,
     halt: bool,

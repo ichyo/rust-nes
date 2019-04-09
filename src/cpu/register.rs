@@ -1,6 +1,6 @@
 /// Define register model
 #[allow(non_snake_case)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Register {
     pub A: u8,             // accumulator
     pub X: u8,             // index register

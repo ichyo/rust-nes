@@ -34,6 +34,7 @@ pub use crate::joypad::KeyState;
 pub use crate::ppu::WINDOW_HEIGHT;
 pub use crate::ppu::WINDOW_WIDTH;
 
+#[derive(Clone)]
 /// Main struct that contains all nes systems
 pub struct Nes {
     cartridge: Cartridge,
