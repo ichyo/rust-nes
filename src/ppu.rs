@@ -50,8 +50,10 @@ impl ExecResult {
 
 const TOTAL_SCANLINE: u16 = 262;
 const TOTAL_CYCLES_IN_LINE: u16 = 341;
-const WINDOW_HEIGHT: usize = 240;
-const WINDOW_WIDTH: usize = 256;
+/// NES screen height
+pub const WINDOW_HEIGHT: usize = 240;
+/// NES screen width
+pub const WINDOW_WIDTH: usize = 256;
 
 impl Ppu {
     /// get render buffer

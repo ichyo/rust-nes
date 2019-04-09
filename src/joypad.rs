@@ -28,10 +28,30 @@ impl Key {
     }
 }
 
+/// State of keys (pressed or released)
+#[derive(Clone, Copy, Default)]
+pub struct KeyState(u8);
+
+impl KeyState {
+    /// Key down
+    pub fn press(&mut self, key: Key) {
+        self.0 |= key.mask();
+    }
+
+    /// Key up
+    pub fn release(&mut self, key: Key) {
+        self.0 &= !key.mask();
+    }
+
+    fn as_u8(self) -> u8 {
+        self.0
+    }
+}
+
 #[derive(Default)]
 /// NES controller
 pub struct JoyPad {
-    key_state: u8,
+    key_state: KeyState,
     buffer: u8,
     strobe_bit: bool,
 }
@@ -44,12 +64,17 @@ impl JoyPad {
 
     /// Key down
     pub fn press(&mut self, key: Key) {
-        self.key_state |= key.mask();
+        self.key_state.press(key);
     }
 
     /// Key up
     pub fn release(&mut self, key: Key) {
-        self.key_state &= !key.mask();
+        self.key_state.release(key);
+    }
+
+    /// Set key state
+    pub fn set_key_state(&mut self, key_state: KeyState) {
+        self.key_state = key_state;
     }
 
     /// Load via memory map
@@ -68,7 +93,7 @@ impl JoyPad {
 
     fn update_buffer(&mut self) {
         if self.strobe_bit {
-            self.buffer = self.key_state;
+            self.buffer = self.key_state.as_u8();
         }
     }
 }
