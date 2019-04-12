@@ -33,7 +33,7 @@ pub struct Apu {
     triangle: Triangle,
     noise: Noise,
     clocks: u64,
-    buffer: VecDeque<f32>,
+    buffer: VecDeque<(f32, f32)>,
 }
 
 impl Default for Apu {
@@ -87,7 +87,7 @@ impl Apu {
         }
     }
 
-    fn sample(&self) -> f32 {
+    fn sample(&self) -> (f32, f32) {
         let p1 = self.pulse1.sample();
         let p2 = self.pulse2.sample();
         let t = self.triangle.sample();
@@ -95,7 +95,7 @@ impl Apu {
 
         let p_out = 95.88 / (((8128.0 / 15.0) / (p1 + p2)) + 100.0);
         let t_out = 159.79 / ((1.0 / ((t / (8227.0 / 15.0)) + (n / (12241.0 / 15.0)))) + 100.0);
-        p_out + t_out
+        (p_out, t_out)
     }
 
     /// Tick 1 CPU clock
@@ -112,15 +112,15 @@ impl Apu {
         self.clocks = (self.clocks + 1) % CPU_CLOCK_RATE;
     }
 
-    fn append_buffer(&mut self, x: f32) {
+    fn append_buffer(&mut self, p: (f32, f32)) {
         if self.buffer.len() == BUFFER_LENGTH {
             self.buffer.pop_front();
         }
-        self.buffer.push_back(x);
+        self.buffer.push_back(p);
     }
 
     /// Get sampling buffer
-    pub fn consume_buffer(&mut self) -> Drain<f32> {
+    pub fn consume_buffer(&mut self) -> Drain<(f32, f32)> {
         self.buffer.drain(..)
     }
 }

@@ -18,7 +18,7 @@ use nes::WINDOW_WIDTH;
 const SCALE: usize = 3;
 
 const SAMPLE_RATE: f64 = 44_100.0;
-const CHANNELS: i32 = 1;
+const CHANNELS: i32 = 2;
 const FRAMES: u32 = 1024;
 const INTERLEAVED: bool = true;
 
@@ -138,7 +138,11 @@ fn main() -> Result<(), Box<Error>> {
 
         let audio_buffer = nes.consume_audio_buffer();
         stream.write(audio_buffer.len() as u32, |output| {
-            output.copy_from_slice(&audio_buffer);
+            assert!(output.len() == 2 * audio_buffer.len());
+            for (i, (l, r)) in audio_buffer.into_iter().enumerate() {
+                output[2 * i] = l * 0.8 + r * 0.2;
+                output[2 * i + 1] = l * 0.2 + r * 0.8;
+            }
         });
 
         let frame_buffer = nes.get_frame_buffer();

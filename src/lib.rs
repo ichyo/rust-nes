@@ -124,7 +124,7 @@ impl Nes {
     }
 
     /// Consume audio buffer in APU
-    pub fn consume_audio_buffer(&mut self) -> Vec<f32> {
+    pub fn consume_audio_buffer(&mut self) -> Vec<(f32, f32)> {
         self.apu.consume_buffer().collect::<Vec<_>>()
     }
 }
