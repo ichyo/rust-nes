@@ -3,7 +3,14 @@
 
 NES emulator written in rust
 
-## Links
+usage: `cargo run --release --bin nes path-to-rom-file`
+
+This is for learning purpose and functions are limited and not complete. Known issues are
+* it runs only mapper 0 ROM
+* sprite priority is wired.
+
+
+## References
 - http://wiki.nesdev.com/w/index.php/Nesdev_Wiki 
 - https://github.com/pcwalton/sprocketnes
 - https://github.com/starrhorne/nes-rust
